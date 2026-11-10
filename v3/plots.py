@@ -15,6 +15,7 @@ import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 from matplotlib import font_manager
+from matplotlib.patches import FancyBboxPatch
 
 COLORS = ["#657186", "#968153", "#147b8e", "#b65e43", "#78498e"]
 RATE = "速率（Mbps）"
@@ -132,6 +133,52 @@ def plot_window_and_pacing(out):
     figure(out, "cwnd-pacing-principle", fig)
 
 
+def plot_bbr_flow(out):
+    fig, axes = plt.subplots(1, 2, figsize=(14, 7.8), layout="constrained")
+    fig.suptitle("两代带宽与往返时延拥塞控制算法的主要流程", fontsize=16, fontweight="bold")
+    descriptions = [
+        ("（甲）本报告使用的第一代算法",
+         ["启动阶段\n发送端提高发包速率，搜索链路的交付上限。",
+          "启动后的排队消减阶段\n发包速率系数约为 0.347，发送端让启动时积累的数据出队。",
+          "带宽探测阶段\n常规发送（1.00） → 加速探测（1.25） → 排队消减（0.75）\n算法依据往返时延和在途数据量循环切换。",
+          "最小往返时延探测阶段\n发送端把拥塞窗口限制在 4 个最大包的大小，再采样往返时延。"],
+         "每次收到确认后，发送端更新近期交付速率最大值，\n再按当前阶段计算目标发包速率和拥塞窗口。"),
+        ("（乙）工作组草案中的第三代算法",
+         ["启动阶段\n发送端快速提高发包速率，并检查交付是否停滞或丢包是否过多。",
+          "启动后的排队消减阶段\n发包速率系数为 0.50，发送端减少在途数据量。",
+          "带宽探测阶段\n消减队列（0.90） → 巡航（1.00） → 补充在途数据（1.00）\n→ 加速探测（1.25） → 回到消减队列。丢包反馈可以中止加速。",
+          "最小往返时延探测阶段\n发送端把窗口系数调为 0.50，并在低在途量下采样往返时延。"],
+         "每次收到确认后，发送端更新长期估计和短期限制，\n再用当前阶段的系数与在途数据上限约束发送。"),
+    ]
+    centers = (.87, .69, .46, .19)
+    heights = (.115, .115, .16, .12)
+    for version, (ax, (title, nodes, note)) in enumerate(zip(axes, descriptions)):
+        ax.set_axis_off()
+        ax.set_title(title, loc="left", fontweight="bold", fontsize=13)
+        for i, (y, height, label) in enumerate(zip(centers, heights, nodes)):
+            ax.add_patch(FancyBboxPatch((.04, y-height/2), .92, height,
+                boxstyle="round,pad=.009,rounding_size=.012", transform=ax.transAxes,
+                fc=("#d9ecee" if i == 2 else "#eef3f7"), ec="#a4b9c7", lw=1))
+            ax.text(.5, y, label, transform=ax.transAxes, ha="center", va="center", fontsize=10.5,
+                    linespacing=1.48)
+        drain_exit = "在途数据下降或达到排队消减时限" if version else "在途数据降至排队消减目标附近"
+        for i, label in enumerate(("链路接近发满或触发拥塞退出条件", drain_exit)):
+            start = centers[i]-heights[i]/2
+            end = centers[i+1]+heights[i+1]/2
+            ax.annotate("", (.5,end+.008), (.5,start-.008), xycoords="axes fraction",
+                        arrowprops={"arrowstyle": "->", "color": "#596b7b", "lw": 1.3})
+            ax.text(.52, (start+end)/2, label, transform=ax.transAxes, va="center", fontsize=8.5,
+                    color="#35495a")
+        for x, start, end, label, tx, align in (
+                (.31,.373,.256,"最小往返时延估计需要刷新",.29,"right"),
+                (.69,.256,.373,"采样结束后恢复带宽探测",.71,"left")):
+            ax.annotate("", (x,end), (x,start), xycoords="axes fraction",
+                        arrowprops={"arrowstyle": "->", "color": "#596b7b", "lw": 1.3})
+            ax.text(tx,.315,label,transform=ax.transAxes,ha=align,va="center",fontsize=8.5,color="#35495a")
+        ax.text(.5,.055,note,transform=ax.transAxes,ha="center",va="center",fontsize=9.5,color="#35495a")
+    figure(out, "bbr-v1-v3-flow", fig)
+
+
 def plot_a(out, runs, long, summary):
     names = ["random", "equal20", "gold", "slow"]
     labels = ["普通管道\n短时波动", "恒定速率\n管道", "稳定高容量\n管道", "普通管道\n长时波动"]
@@ -180,8 +227,9 @@ def plot_a_slow(out):
         except KeyError:
             return
         with io.TextIOWrapper(archive.extractfile(sample_dir + "samples.csv"), encoding="utf-8") as stream:
-            pacing = [((int(row["us"]) - plan["origin"]) / 1e6, int(row["pacing_bps"]) / 1e6)
-                      for row in csv.DictReader(stream)]
+            samples = list(csv.DictReader(stream))
+    times = [(int(row["us"]) - plan["origin"]) / 1e6 for row in samples]
+    pacing = [(t, int(row["pacing_bps"]) / 1e6) for t, row in zip(times, samples)]
     capacity = [(offset / 1e6, rate) for offset, rate in plan["capacity"]]
 
     def step(ax, trace, left, right, **kwargs):
@@ -206,6 +254,42 @@ def plot_a_slow(out):
         style(ax, title, RATE)
     axes[0].legend(loc="lower center", ncol=3, fontsize=9)
     figure(out, "A1-slow-rates", fig)
+
+    changes = out / "A1-pacing-changes.csv"
+    if not changes.is_file():
+        return
+    with changes.open(encoding="utf-8") as stream:
+        events = list(csv.DictReader(stream))
+    left, right = 3.159, 3.228
+    drop = next(t for t, rate in capacity if left < t < right and rate == 10)
+    fig, ax = plt.subplots(3, 1, figsize=(11, 7.4), layout="constrained", sharex=True)
+    fig.suptitle("A1 目标发包速率跳变的实测归因", fontweight="bold")
+    step(ax[0], pacing, left, right, color=COLORS[2], lw=1.8, label="目标发包速率")
+    step(ax[0], capacity, left, right, color="#333333", linestyle="--", label="模拟空口容量")
+    ax[0].set_ylim(5, 44)
+    style(ax[0], "（甲）目标发包速率与模拟空口容量", RATE)
+    ax[0].legend(loc="lower left", ncol=2, fontsize=9)
+    for i, row in enumerate((r for r in events if left <= int(r["sample_us"])/1e6 < right), 1):
+        t, y = int(row["sample_us"])/1e6, int(row["pacing_after_bps"])/1e6
+        ax[0].scatter(t, y, color=COLORS[2], zorder=4)
+        ax[0].annotate(str(i), (t,y), xytext=(4,6), textcoords="offset points", fontweight="bold")
+    estimate = [(t, int(row["btlbw_bps"])/1e6) for t, row in zip(times, samples)]
+    delivery = [(t, int(row["delivery_sample_bps"])/1e6) for t, row in zip(times, samples)]
+    step(ax[1], estimate, left, right, color=COLORS[2], lw=1.8, label="瓶颈带宽估计")
+    step(ax[1], delivery, left, right, color=COLORS[0], alpha=.8, label="最近一次交付速率样本")
+    style(ax[1], "（乙）最近交付样本变化后，带宽估计保留较高数值", RATE)
+    ax[1].legend(loc="lower left", ncol=2, fontsize=9)
+    gains = [(int(events[0]["previous_sample_us"])/1e6, float(events[0]["gain_before"]))]
+    gains.extend((int(r["sample_us"])/1e6, float(r["gain_after"])) for r in events)
+    step(ax[2], gains, left, right, color=COLORS[3], lw=1.8)
+    ax[2].set_yticks([.75, 1, 1.25], ["0.75（排队消减）", "1.00（常规发送）", "1.25（加速探测）"])
+    ax[2].set_ylim(.65, 1.35)
+    style(ax[2], "（丙）发包速率系数在三个档位之间切换", "发包速率系数")
+    ax[2].set_xlabel("从实验计时起点开始计时（s）")
+    for panel in ax:
+        panel.axvline(drop, color="#a45c44", linestyle=":", alpha=.85)
+        panel.set_xlim(left, right)
+    figure(out, "A1-pacing-attribution", fig)
 
 
 def aggregate(curves, case, size, field):
@@ -360,6 +444,7 @@ def main():
     with gzip.open(out/"tasks.csv.gz","rt") as handle:
         tasks=[r for r in csv.DictReader(handle) if r["case"].startswith("C1_")]
     plot_window_and_pacing(out)
+    plot_bbr_flow(out)
     plot_a(out,runs,rows("A1-trace.csv"),summary)
     plot_a_slow(out)
     plot_b(out,curves,summary)

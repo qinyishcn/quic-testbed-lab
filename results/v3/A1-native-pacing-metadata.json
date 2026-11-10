@@ -1,0 +1,19 @@
+{
+  "samples": 2819,
+  "samples_reconstructed": 2819,
+  "environment": {
+    "testbed": "7231ae8e5670b67564cf28d397c2820d9403ecdc",
+    "kernel": "6.6.87.2-microsoft-standard-WSL2",
+    "testbed_hashes": {
+      "netemu/src/netemu/emulator.py": "fb28fa06a292bec14c90576a96ae7f3b487267cba7dc229a3509cca09ccb188b",
+      "netemu/src/netemu/profile.py": "df355f6aa7ef45c50e9feb5a230f3e558df1c0b76afa29fdfeaf737339347b66",
+      "aitestbed/analysis/logger.py": "49180740a155994ff5924c1f11e7235e60ee5a67f3291719015407f8dbe34796"
+    },
+    "endpoint_hash": "a4c047b5e26370d62c58a0cd5f3554764be7f8b88bf0fa1e83d0e79c35a3e5d1",
+    "qlog": false,
+    "cases": [
+      "A1load_slow"
+    ],
+    "repeats": 1
+  }
+}

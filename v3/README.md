@@ -20,6 +20,7 @@ sudo "$PY" v3/experiment.py --testbed "$TESTBED" --endpoint "$V3_BIN" \
 sudo "$PY" v3/experiment.py --testbed "$TESTBED" --endpoint "$V3_BIN" \
   --out "$V3_RTT" --repeats 3 --only B1_rtt_elastic B1_rtt_fast
 "$PY" v3/report_data.py "$V3_RAW" "$V3_FX" results/v3 --extra "$V3_EXTRA" "$V3_RTT" --archive
+"$PY" v3/pacing_changes.py results/v3 --formal "$V3_RAW" "$V3_EXTRA" "$V3_RTT"
 "$PY" v3/plots.py results/v3
 ```
 
@@ -37,3 +38,20 @@ sudo "$PY" v3/experiment.py --testbed "$TESTBED" --endpoint "$V3_BIN" \
 | [B1/D1 时序](../results/v3/BD-curves.csv.gz) | 每次任务前 40 ms 按 1 ms 分桶，状态取桶首前最近的样本。`tx/rx` 是路由中继的入队与出队 IP 字节数，`queue` 是桶内队列峰值。 |
 | [真实推理结果](../results/v3/model-results.csv) 与 [输入档位](../results/v3/fixtures.json) | 原始题标识、答案、正确性、每张图重编码后的组合请求字节数和 SHA-256。图片和权重由本地素材准备。 |
 | [代表性原始证据](../results/v3/trace-evidence.tar.xz) | 四类用例选定轮次的双端 qlog、端点逐采样状态、发送和接收事件、路由器逐包事件，以及去除本地素材路径的任务和容量计划。A1 长时波动补充图直接读取第一轮的容量计划和原始采样。 |
+| [A1 逐次跳变](../results/v3/A1-pacing-changes.csv) | 每行对应原图第 3 s 至第 6 s 之间一次可见的目标发包速率变化。记录包括相邻两个采样时刻、两次容量、两个目标速率、两个带宽估计、反推的发包速率系数以及拥塞窗口。`cause` 区分只变系数、只变带宽估计、两者都变。 |
+| [A1 内部复验事件](../results/v3/A1-native-pacing-updates.csv) | 独立复验中，发送端每次改写目标发包速率时记录内部事件。记录包括通知类型、探测阶段编号、反馈轮次、交付样本、窗口、批量额度和路径包长。 |
+| [BBRv1 最小往返时延探测观察](../results/v3/BBRv1-probe-rtt-observations.csv) | 按正式轮次扫描端点的周期采样。`probe_rtt_samples` 表示采到该状态的次数。首末采样时间相对实验计时起点，单位为微秒。 |
+
+### A1 内部事件复验
+
+在同一个固定提交上构建带日志的可执行文件。构建脚本在上游构建目录生成一个带观测代码的源文件。观测代码在发送端改写目标发包速率时写出内部状态。此复验使用相同的 A1 长时波动配置，关闭双端 QUIC 通用事件日志，以便单独核对拥塞控制通知处理。
+
+```bash
+V3_DIAG_BIN="$PWD/gold-pipe-endpoint-trace"
+V3_DIAG_RAW="$HOME/quic-v3-bbr-native"
+bash v3/build.sh "$PWD/picoquic" "$V3_DIAG_BIN" --trace-bbr
+sudo "$PY" v3/experiment.py --testbed "$TESTBED" --endpoint "$V3_DIAG_BIN" \
+  --out "$V3_DIAG_RAW" --repeats 1 --only A1load_slow --no-qlog
+"$PY" v3/pacing_changes.py results/v3 --native "$V3_DIAG_RAW/A1load_slow__00"
+"$PY" v3/plots.py results/v3
+```
