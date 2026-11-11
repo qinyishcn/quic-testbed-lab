@@ -1,0 +1,2 @@
+start_offset_us,end_offset_us,sample_count,minimum_pace_bps,maximum_pace_bps,ingress_bytes,forwarded_bytes,dropped_bytes,queue_before_bytes,queue_after_bytes
+3181364,3186364,5,26084992,26084992,16640,6400,0,3840,14080

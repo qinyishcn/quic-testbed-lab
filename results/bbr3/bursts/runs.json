@@ -1,0 +1,1579 @@
+[
+  {
+    "case": "A1_equal20",
+    "repeat": 0,
+    "tasks": 400,
+    "uploaded": 400,
+    "drops": 0,
+    "release_late_p99_ms": 0.206,
+    "dispatch_late_p99_ms": 0.16801,
+    "retransmissions": 2,
+    "active_samples": 2809,
+    "capacity_mbps": 20.0,
+    "receiver_ip_mbps": 16.883168,
+    "sender_ip_mbps": 16.883168,
+    "pace": [
+      17.585232,
+      19.775992,
+      24.983568,
+      25.576864
+    ],
+    "bw": [
+      19.493344,
+      19.945536,
+      21.060696,
+      21.21188
+    ],
+    "cwnd": [
+      20.457,
+      21.043,
+      25.562,
+      26.011
+    ],
+    "queue": [
+      0.083,
+      3.84,
+      7.68,
+      8.96
+    ],
+    "mismatch": [
+      0.0764320000000005,
+      0.8500879999999995,
+      4.983568000000002,
+      5.5768640000000005
+    ],
+    "overshoot_pct": 37.27305090779637,
+    "states": {
+      "65541": 401,
+      "66309": 299,
+      "65794": 437,
+      "65538": 171,
+      "65539": 173,
+      "66307": 685,
+      "66052": 321,
+      "65795": 322
+    }
+  },
+  {
+    "case": "A1_equal20",
+    "repeat": 1,
+    "tasks": 400,
+    "uploaded": 400,
+    "drops": 0,
+    "release_late_p99_ms": 0.179,
+    "dispatch_late_p99_ms": 0.13501999999999997,
+    "retransmissions": 2,
+    "active_samples": 2710,
+    "capacity_mbps": 20.0,
+    "receiver_ip_mbps": 16.857688,
+    "sender_ip_mbps": 16.857688,
+    "pace": [
+      17.762512,
+      20.355824,
+      25.766264,
+      26.742976
+    ],
+    "bw": [
+      19.483736,
+      20.34948,
+      21.610488,
+      21.62624
+    ],
+    "cwnd": [
+      21.211,
+      22.163,
+      26.68,
+      27.404
+    ],
+    "queue": [
+      1.28,
+      3.84,
+      7.68,
+      8.96
+    ],
+    "mismatch": [
+      0.14598399999999856,
+      0.8108719999999998,
+      5.766264,
+      6.742975999999999
+    ],
+    "overshoot_pct": 53.46863468634686,
+    "states": {
+      "65795": 690,
+      "65539": 218,
+      "66052": 321,
+      "65541": 300,
+      "66309": 267,
+      "65794": 418,
+      "66307": 414,
+      "65538": 82
+    }
+  },
+  {
+    "case": "A1_equal20",
+    "repeat": 2,
+    "tasks": 400,
+    "uploaded": 400,
+    "drops": 0,
+    "release_late_p99_ms": 0.217,
+    "dispatch_late_p99_ms": 0.17003999999999997,
+    "retransmissions": 2,
+    "active_samples": 2794,
+    "capacity_mbps": 20.0,
+    "receiver_ip_mbps": 16.880797333333334,
+    "sender_ip_mbps": 16.880797333333334,
+    "pace": [
+      17.554576,
+      19.683212,
+      24.921376,
+      25.702216
+    ],
+    "bw": [
+      19.474144,
+      19.810664,
+      20.769472,
+      21.70404
+    ],
+    "cwnd": [
+      20.64195,
+      21.1535,
+      25.712,
+      26.088
+    ],
+    "queue": [
+      0.083,
+      3.84,
+      7.68,
+      8.96
+    ],
+    "mismatch": [
+      0.0779519999999998,
+      0.720600000000001,
+      4.921375999999999,
+      5.702216
+    ],
+    "overshoot_pct": 34.43092340730136,
+    "states": {
+      "66309": 356,
+      "65794": 408,
+      "65538": 141,
+      "65539": 167,
+      "66307": 682,
+      "66052": 319,
+      "65541": 365,
+      "65795": 356
+    }
+  },
+  {
+    "case": "A1_gold",
+    "repeat": 0,
+    "tasks": 400,
+    "uploaded": 400,
+    "drops": 0,
+    "release_late_p99_ms": 0.19675,
+    "dispatch_late_p99_ms": 0.12302999999999997,
+    "retransmissions": 2,
+    "active_samples": 2802,
+    "capacity_mbps": 29.000493333333335,
+    "receiver_ip_mbps": 16.8868,
+    "sender_ip_mbps": 16.8868,
+    "pace": [
+      26.4452,
+      29.390864,
+      37.177624,
+      37.588768
+    ],
+    "bw": [
+      29.260208,
+      29.680368,
+      30.374768,
+      30.55624
+    ],
+    "cwnd": [
+      27.585,
+      28.187,
+      33.624,
+      34.154
+    ],
+    "queue": [
+      0.083,
+      5.12,
+      10.24,
+      11.52
+    ],
+    "mismatch": [
+      0.12020000000000053,
+      1.343872000000001,
+      8.738576000000002,
+      9.55424
+    ],
+    "overshoot_pct": 58.60099928622412,
+    "states": {
+      "65795": 1245,
+      "65539": 104,
+      "66307": 300,
+      "66052": 275,
+      "65541": 270,
+      "66309": 346,
+      "65794": 262
+    }
+  },
+  {
+    "case": "A1_gold",
+    "repeat": 1,
+    "tasks": 400,
+    "uploaded": 400,
+    "drops": 0,
+    "release_late_p99_ms": 0.146,
+    "dispatch_late_p99_ms": 0.13201999999999997,
+    "retransmissions": 2,
+    "active_samples": 2788,
+    "capacity_mbps": 28.998190666666666,
+    "receiver_ip_mbps": 16.887021333333333,
+    "sender_ip_mbps": 16.887021333333333,
+    "pace": [
+      80.4256,
+      81.993272,
+      81.993272,
+      81.993272
+    ],
+    "bw": [
+      29.327792,
+      29.899456,
+      29.899456,
+      29.899456
+    ],
+    "cwnd": [
+      31.945,
+      31.945,
+      31.945,
+      31.945
+    ],
+    "queue": [
+      0.083,
+      16.64,
+      25.6,
+      26.88
+    ],
+    "mismatch": [
+      50.4256,
+      52.4256,
+      53.993272000000005,
+      53.993272000000005
+    ],
+    "overshoot_pct": 100.0,
+    "states": {
+      "0": 2788
+    }
+  },
+  {
+    "case": "A1_gold",
+    "repeat": 2,
+    "tasks": 400,
+    "uploaded": 400,
+    "drops": 0,
+    "release_late_p99_ms": 0.2,
+    "dispatch_late_p99_ms": 0.13102999999999998,
+    "retransmissions": 2,
+    "active_samples": 2810,
+    "capacity_mbps": 29.000808,
+    "receiver_ip_mbps": 16.886837333333332,
+    "sender_ip_mbps": 16.886837333333332,
+    "pace": [
+      28.647968,
+      30.636048,
+      39.788848,
+      39.788848
+    ],
+    "bw": [
+      30.100456,
+      30.945504,
+      32.152608,
+      32.152608
+    ],
+    "cwnd": [
+      31.03,
+      32.13,
+      38.529,
+      38.80874
+    ],
+    "queue": [
+      0.083,
+      5.12,
+      11.52,
+      14.08
+    ],
+    "mismatch": [
+      0.2867759999999997,
+      2.2867759999999997,
+      10.295056000000002,
+      11.788848000000002
+    ],
+    "overshoot_pct": 90.42704626334519,
+    "states": {
+      "65795": 1792,
+      "66052": 224,
+      "65541": 229,
+      "66309": 303,
+      "65794": 189,
+      "65539": 25,
+      "66307": 48
+    }
+  },
+  {
+    "case": "A1_random",
+    "repeat": 0,
+    "tasks": 400,
+    "uploaded": 400,
+    "drops": 0,
+    "release_late_p99_ms": 0.181,
+    "dispatch_late_p99_ms": 0.144,
+    "retransmissions": 2,
+    "active_samples": 2784,
+    "capacity_mbps": 19.995066666666666,
+    "receiver_ip_mbps": 16.873544,
+    "sender_ip_mbps": 16.873544,
+    "pace": [
+      21.380984,
+      25.84396,
+      34.97712,
+      71.882984
+    ],
+    "bw": [
+      21.64268,
+      25.692648,
+      28.895376,
+      29.254432
+    ],
+    "cwnd": [
+      31.109,
+      33.409,
+      40.027,
+      41.96329
+    ],
+    "queue": [
+      0.083,
+      6.4,
+      19.2,
+      24.32
+    ],
+    "mismatch": [
+      1.3935840000000006,
+      12.806640000000002,
+      25.283724399999986,
+      61.88298399999999
+    ],
+    "overshoot_pct": 55.81896551724138,
+    "states": {
+      "65795": 1158,
+      "66052": 252,
+      "65541": 225,
+      "66309": 194,
+      "65794": 233,
+      "65539": 166,
+      "66307": 395,
+      "65793": 81,
+      "768": 70,
+      "66305": 10
+    }
+  },
+  {
+    "case": "A1_random",
+    "repeat": 1,
+    "tasks": 400,
+    "uploaded": 400,
+    "drops": 0,
+    "release_late_p99_ms": 0.15969000000000053,
+    "dispatch_late_p99_ms": 0.15403999999999995,
+    "retransmissions": 2,
+    "active_samples": 2816,
+    "capacity_mbps": 20.018093333333333,
+    "receiver_ip_mbps": 16.879781333333334,
+    "sender_ip_mbps": 16.879781333333334,
+    "pace": [
+      16.66232,
+      24.1968,
+      68.280416,
+      73.674384
+    ],
+    "bw": [
+      17.774768,
+      23.839264,
+      29.07732,
+      29.283312
+    ],
+    "cwnd": [
+      22.648,
+      27.732,
+      32.52,
+      36.29204999999999
+    ],
+    "queue": [
+      0.083,
+      6.218,
+      19.2,
+      25.6
+    ],
+    "mismatch": [
+      1.281687999999999,
+      11.412576000000001,
+      42.59188,
+      62.59188
+    ],
+    "overshoot_pct": 55.25568181818182,
+    "states": {
+      "65795": 991,
+      "65539": 221,
+      "66307": 365,
+      "66052": 229,
+      "65541": 188,
+      "66309": 161,
+      "65794": 280,
+      "65793": 138,
+      "65538": 13,
+      "256": 83,
+      "768": 95,
+      "0": 52
+    }
+  },
+  {
+    "case": "A1_random",
+    "repeat": 2,
+    "tasks": 400,
+    "uploaded": 400,
+    "drops": 0,
+    "release_late_p99_ms": 0.22111000000000058,
+    "dispatch_late_p99_ms": 0.17005999999999993,
+    "retransmissions": 2,
+    "active_samples": 2773,
+    "capacity_mbps": 19.99192,
+    "receiver_ip_mbps": 16.871586666666666,
+    "sender_ip_mbps": 16.871586666666666,
+    "pace": [
+      25.47168,
+      31.880912,
+      88.310128,
+      88.310128
+    ],
+    "bw": [
+      26.871544,
+      29.846584,
+      32.202944,
+      32.202944
+    ],
+    "cwnd": [
+      37.191,
+      41.999,
+      50.142,
+      50.142
+    ],
+    "queue": [
+      1.091,
+      10.24,
+      30.72,
+      36.938
+    ],
+    "mismatch": [
+      1.1707919999999987,
+      18.829208,
+      78.310128,
+      78.310128
+    ],
+    "overshoot_pct": 77.60548142805625,
+    "states": {
+      "768": 561,
+      "66305": 13,
+      "65795": 1150,
+      "66052": 142,
+      "65541": 190,
+      "65794": 130,
+      "66309": 143,
+      "65793": 19,
+      "65539": 39,
+      "66307": 84,
+      "0": 302
+    }
+  },
+  {
+    "case": "A1load_equal20",
+    "repeat": 0,
+    "tasks": 600,
+    "uploaded": 600,
+    "drops": 0,
+    "release_late_p99_ms": 0.187,
+    "dispatch_late_p99_ms": 0.16307999999999992,
+    "retransmissions": 2,
+    "active_samples": 2830,
+    "capacity_mbps": 20.0,
+    "receiver_ip_mbps": 19.998701333333333,
+    "sender_ip_mbps": 20.012354666666667,
+    "pace": [
+      17.640992,
+      18.56912,
+      25.40903319999999,
+      25.869752
+    ],
+    "bw": [
+      19.628032,
+      20.501432,
+      21.098144,
+      21.3656
+    ],
+    "cwnd": [
+      24.019,
+      24.87,
+      29.66,
+      30.227
+    ],
+    "queue": [
+      3.84,
+      6.4,
+      10.24,
+      11.52
+    ],
+    "mismatch": [
+      0.18032799999999938,
+      1.578240000000001,
+      5.409033199999988,
+      5.869751999999998
+    ],
+    "overshoot_pct": 22.579505300353357,
+    "states": {
+      "66307": 379,
+      "66052": 289,
+      "65541": 276,
+      "65794": 413,
+      "65538": 362,
+      "66306": 1028,
+      "66309": 83
+    }
+  },
+  {
+    "case": "A1load_equal20",
+    "repeat": 1,
+    "tasks": 600,
+    "uploaded": 600,
+    "drops": 0,
+    "release_late_p99_ms": 0.142,
+    "dispatch_late_p99_ms": 0.11301999999999998,
+    "retransmissions": 3,
+    "active_samples": 2837,
+    "capacity_mbps": 20.0,
+    "receiver_ip_mbps": 20.002112,
+    "sender_ip_mbps": 19.998698666666666,
+    "pace": [
+      17.524024,
+      18.282648,
+      25.031176,
+      25.452902399999996
+    ],
+    "bw": [
+      19.42632,
+      20.172728,
+      20.681384,
+      21.35124
+    ],
+    "cwnd": [
+      18.815,
+      19.291,
+      23.557599999999994,
+      23.957
+    ],
+    "queue": [
+      2.56,
+      5.12,
+      7.68,
+      8.96
+    ],
+    "mismatch": [
+      0.0535199999999989,
+      1.9775519999999993,
+      5.0311759999999985,
+      5.4529023999999975
+    ],
+    "overshoot_pct": 21.36059217483257,
+    "states": {
+      "65538": 503,
+      "66306": 704,
+      "66307": 306,
+      "66052": 352,
+      "65541": 328,
+      "66309": 137,
+      "65794": 505,
+      "65539": 2
+    }
+  },
+  {
+    "case": "A1load_equal20",
+    "repeat": 2,
+    "tasks": 600,
+    "uploaded": 600,
+    "drops": 0,
+    "release_late_p99_ms": 0.1717599999999984,
+    "dispatch_late_p99_ms": 0.19601999999999997,
+    "retransmissions": 2,
+    "active_samples": 2830,
+    "capacity_mbps": 20.0,
+    "receiver_ip_mbps": 20.002114666666667,
+    "sender_ip_mbps": 19.988461333333333,
+    "pace": [
+      17.65572,
+      18.431392,
+      25.340712,
+      25.955112
+    ],
+    "bw": [
+      19.67108,
+      20.331728,
+      21.264512,
+      21.485272
+    ],
+    "cwnd": [
+      21.196,
+      21.864,
+      26.3572,
+      26.915
+    ],
+    "queue": [
+      2.56,
+      5.12,
+      8.96,
+      10.24
+    ],
+    "mismatch": [
+      0.11462399999999917,
+      1.7562640000000016,
+      5.340712,
+      5.955112
+    ],
+    "overshoot_pct": 21.978798586572438,
+    "states": {
+      "65794": 447,
+      "65538": 439,
+      "66306": 994,
+      "66052": 310,
+      "65541": 293,
+      "66309": 105,
+      "66307": 242
+    }
+  },
+  {
+    "case": "A1load_gold",
+    "repeat": 0,
+    "tasks": 600,
+    "uploaded": 600,
+    "drops": 0,
+    "release_late_p99_ms": 0.13972999999999958,
+    "dispatch_late_p99_ms": 0.12403999999999997,
+    "retransmissions": 2,
+    "active_samples": 2845,
+    "capacity_mbps": 29.000493333333335,
+    "receiver_ip_mbps": 28.999661333333332,
+    "sender_ip_mbps": 28.992834666666667,
+    "pace": [
+      25.972392,
+      27.206592,
+      36.668208,
+      37.786936
+    ],
+    "bw": [
+      28.917912,
+      30.009104,
+      30.86784,
+      31.219784
+    ],
+    "cwnd": [
+      29.496,
+      30.32,
+      35.322199999999995,
+      36.07156
+    ],
+    "queue": [
+      3.84,
+      7.68,
+      12.8,
+      15.36
+    ],
+    "mismatch": [
+      0.26501599999999925,
+      1.7259199999999986,
+      7.668128000000003,
+      9.523599679999998
+    ],
+    "overshoot_pct": 24.428822495606326,
+    "states": {
+      "66307": 555,
+      "66052": 258,
+      "65541": 224,
+      "65794": 334,
+      "65538": 311,
+      "66306": 1146,
+      "66309": 17
+    }
+  },
+  {
+    "case": "A1load_gold",
+    "repeat": 1,
+    "tasks": 600,
+    "uploaded": 600,
+    "drops": 0,
+    "release_late_p99_ms": 0.126,
+    "dispatch_late_p99_ms": 0.08700999999999999,
+    "retransmissions": 3,
+    "active_samples": 2846,
+    "capacity_mbps": 28.998190666666666,
+    "receiver_ip_mbps": 28.982610666666666,
+    "sender_ip_mbps": 29.003090666666665,
+    "pace": [
+      25.892064,
+      27.176264,
+      36.731232,
+      37.860144
+    ],
+    "bw": [
+      28.957432,
+      29.749528,
+      30.7654,
+      30.781168
+    ],
+    "cwnd": [
+      27.087,
+      27.648,
+      32.639,
+      33.268
+    ],
+    "queue": [
+      3.84,
+      6.4,
+      11.52,
+      14.08
+    ],
+    "mismatch": [
+      0.5645759999999989,
+      1.8504959999999997,
+      7.9946800000000025,
+      9.627729600000013
+    ],
+    "overshoot_pct": 25.017568517217146,
+    "states": {
+      "66307": 478,
+      "66052": 285,
+      "65541": 248,
+      "65794": 367,
+      "65538": 337,
+      "66306": 1104,
+      "66309": 27
+    }
+  },
+  {
+    "case": "A1load_gold",
+    "repeat": 2,
+    "tasks": 600,
+    "uploaded": 600,
+    "drops": 0,
+    "release_late_p99_ms": 0.139,
+    "dispatch_late_p99_ms": 0.16904999999999995,
+    "retransmissions": 2,
+    "active_samples": 2841,
+    "capacity_mbps": 29.000808,
+    "receiver_ip_mbps": 28.999669333333333,
+    "sender_ip_mbps": 28.982602666666665,
+    "pace": [
+      25.912368,
+      27.323768,
+      36.617648,
+      38.153576
+    ],
+    "bw": [
+      28.91932,
+      29.649168,
+      31.078048,
+      31.390472
+    ],
+    "cwnd": [
+      26.71,
+      27.756,
+      32.578,
+      33.924
+    ],
+    "queue": [
+      2.56,
+      6.4,
+      11.52,
+      12.8
+    ],
+    "mismatch": [
+      0.3601360000000007,
+      1.975760000000001,
+      8.127048000000002,
+      9.715727999999999
+    ],
+    "overshoot_pct": 23.090461105244632,
+    "states": {
+      "66306": 1174,
+      "66307": 433,
+      "66052": 258,
+      "65541": 234,
+      "65794": 356,
+      "65538": 335,
+      "66309": 51
+    }
+  },
+  {
+    "case": "A1load_random",
+    "repeat": 0,
+    "tasks": 600,
+    "uploaded": 600,
+    "drops": 0,
+    "release_late_p99_ms": 0.198,
+    "dispatch_late_p99_ms": 0.134,
+    "retransmissions": 2,
+    "active_samples": 2840,
+    "capacity_mbps": 19.995066666666666,
+    "receiver_ip_mbps": 19.992213333333332,
+    "sender_ip_mbps": 19.981973333333332,
+    "pace": [
+      18.186424,
+      19.753824,
+      24.068192,
+      28.328786880000013
+    ],
+    "bw": [
+      20.21132,
+      22.052496,
+      23.472384,
+      24.311312
+    ],
+    "cwnd": [
+      34.381,
+      35.652,
+      39.301,
+      41.242
+    ],
+    "queue": [
+      11.52,
+      21.843,
+      30.72,
+      33.363
+    ],
+    "mismatch": [
+      7.881176,
+      10.013656000000001,
+      12.135241999999987,
+      17.435864
+    ],
+    "overshoot_pct": 50.42253521126761,
+    "states": {
+      "66052": 284,
+      "65541": 138,
+      "65794": 340,
+      "65538": 319,
+      "66306": 1754,
+      "66307": 3,
+      "66309": 2
+    }
+  },
+  {
+    "case": "A1load_random",
+    "repeat": 1,
+    "tasks": 600,
+    "uploaded": 600,
+    "drops": 0,
+    "release_late_p99_ms": 0.147,
+    "dispatch_late_p99_ms": 0.10401999999999999,
+    "retransmissions": 2,
+    "active_samples": 2846,
+    "capacity_mbps": 20.018093333333333,
+    "receiver_ip_mbps": 20.016762666666665,
+    "sender_ip_mbps": 20.023589333333334,
+    "pace": [
+      18.097008,
+      19.861216,
+      25.355632,
+      27.775792
+    ],
+    "bw": [
+      19.986288,
+      21.812992,
+      23.17,
+      23.388168
+    ],
+    "cwnd": [
+      28.868,
+      30.757,
+      33.5495,
+      36.10230000000001
+    ],
+    "queue": [
+      8.96,
+      17.92,
+      25.6,
+      28.243
+    ],
+    "mismatch": [
+      7.8077760000000005,
+      10.001432000000001,
+      12.232824,
+      17.374488
+    ],
+    "overshoot_pct": 49.894588896697115,
+    "states": {
+      "66052": 363,
+      "65541": 165,
+      "65794": 454,
+      "65538": 408,
+      "66306": 1370,
+      "66307": 85,
+      "65539": 1
+    }
+  },
+  {
+    "case": "A1load_random",
+    "repeat": 2,
+    "tasks": 600,
+    "uploaded": 600,
+    "drops": 0,
+    "release_late_p99_ms": 0.183,
+    "dispatch_late_p99_ms": 0.13916999999999985,
+    "retransmissions": 2,
+    "active_samples": 2838,
+    "capacity_mbps": 19.99192,
+    "receiver_ip_mbps": 19.992672,
+    "sender_ip_mbps": 19.996085333333333,
+    "pace": [
+      18.423008,
+      19.588272,
+      25.614781600000008,
+      27.9634
+    ],
+    "bw": [
+      20.632232,
+      21.831136,
+      23.090808,
+      23.776848
+    ],
+    "cwnd": [
+      31.971,
+      33.679,
+      36.424300000000024,
+      39.15303000000001
+    ],
+    "queue": [
+      12.8,
+      21.76,
+      29.44,
+      32.0
+    ],
+    "mismatch": [
+      8.012832,
+      10.014256,
+      12.339872,
+      17.205936
+    ],
+    "overshoot_pct": 50.03523608174771,
+    "states": {
+      "66052": 356,
+      "65541": 160,
+      "65794": 428,
+      "65538": 361,
+      "66306": 1479,
+      "66307": 54
+    }
+  },
+  {
+    "case": "A1load_slow",
+    "repeat": 0,
+    "tasks": 600,
+    "uploaded": 600,
+    "drops": 0,
+    "release_late_p99_ms": 0.172,
+    "dispatch_late_p99_ms": 0.13702999999999999,
+    "retransmissions": 2,
+    "active_samples": 2822,
+    "capacity_mbps": 19.898913333333333,
+    "receiver_ip_mbps": 19.016090666666667,
+    "sender_ip_mbps": 18.961034666666666,
+    "pace": [
+      8.728952,
+      26.56344,
+      38.378664,
+      84.28186159999991
+    ],
+    "bw": [
+      9.640272,
+      29.198064,
+      31.217048,
+      32.010352
+    ],
+    "cwnd": [
+      11.1,
+      24.562,
+      30.171,
+      35.67841
+    ],
+    "queue": [
+      1.28,
+      8.96,
+      23.123,
+      26.963
+    ],
+    "mismatch": [
+      0.2514959999999995,
+      5.09448,
+      21.2704816,
+      54.28186159999992
+    ],
+    "overshoot_pct": 46.13749114103473,
+    "states": {
+      "65794": 383,
+      "65538": 264,
+      "66052": 362,
+      "65541": 193,
+      "65539": 130,
+      "66309": 146,
+      "66306": 723,
+      "65793": 109,
+      "65795": 115,
+      "768": 129,
+      "66307": 246,
+      "66305": 22
+    }
+  },
+  {
+    "case": "A1load_slow",
+    "repeat": 1,
+    "tasks": 600,
+    "uploaded": 600,
+    "drops": 0,
+    "release_late_p99_ms": 0.187,
+    "dispatch_late_p99_ms": 0.21800999999999998,
+    "retransmissions": 2,
+    "active_samples": 2816,
+    "capacity_mbps": 19.70194,
+    "receiver_ip_mbps": 18.589408,
+    "sender_ip_mbps": 18.548448,
+    "pace": [
+      8.74415,
+      26.5168,
+      45.592794,
+      82.285624
+    ],
+    "bw": [
+      9.624024,
+      29.501736,
+      30.594056,
+      31.53272
+    ],
+    "cwnd": [
+      12.394,
+      25.856,
+      32.852000000000004,
+      36.736
+    ],
+    "queue": [
+      1.28,
+      10.24,
+      24.403,
+      28.16
+    ],
+    "mismatch": [
+      0.2940000000000005,
+      6.562432000000001,
+      27.207622,
+      52.285624
+    ],
+    "overshoot_pct": 48.72159090909091,
+    "states": {
+      "66052": 409,
+      "65541": 194,
+      "65794": 420,
+      "65538": 282,
+      "66306": 532,
+      "66307": 286,
+      "66309": 162,
+      "65795": 122,
+      "65539": 126,
+      "65793": 114,
+      "768": 157,
+      "66305": 12
+    }
+  },
+  {
+    "case": "A1load_slow",
+    "repeat": 2,
+    "tasks": 600,
+    "uploaded": 600,
+    "drops": 0,
+    "release_late_p99_ms": 0.146880000000001,
+    "dispatch_late_p99_ms": 0.12600999999999998,
+    "retransmissions": 2,
+    "active_samples": 2820,
+    "capacity_mbps": 20.080666666666666,
+    "receiver_ip_mbps": 19.103328,
+    "sender_ip_mbps": 19.154528,
+    "pace": [
+      8.872265200000001,
+      26.79096,
+      61.934048,
+      83.759032
+    ],
+    "bw": [
+      9.572392,
+      29.851632,
+      30.875872,
+      31.940928
+    ],
+    "cwnd": [
+      11.18,
+      24.603,
+      30.226,
+      33.946809999999914
+    ],
+    "queue": [
+      1.28,
+      14.08,
+      23.123,
+      26.88
+    ],
+    "mismatch": [
+      0.23791200000000146,
+      7.209671999999998,
+      31.934047999999997,
+      53.759032000000005
+    ],
+    "overshoot_pct": 51.347517730496456,
+    "states": {
+      "65539": 127,
+      "66052": 409,
+      "65541": 188,
+      "65794": 402,
+      "65538": 256,
+      "65795": 100,
+      "66309": 109,
+      "768": 179,
+      "66307": 280,
+      "66306": 644,
+      "65793": 126
+    }
+  },
+  {
+    "case": "B1_elastic",
+    "repeat": 0,
+    "tasks": 15,
+    "uploaded": 15,
+    "drops": 0,
+    "release_late_p99_ms": 0.19160999999999967,
+    "dispatch_late_p99_ms": 0.21947999999999993,
+    "retransmissions": 2
+  },
+  {
+    "case": "B1_elastic",
+    "repeat": 1,
+    "tasks": 15,
+    "uploaded": 15,
+    "drops": 0,
+    "release_late_p99_ms": 0.19564999999999963,
+    "dispatch_late_p99_ms": 0.12358,
+    "retransmissions": 2
+  },
+  {
+    "case": "B1_elastic",
+    "repeat": 2,
+    "tasks": 15,
+    "uploaded": 15,
+    "drops": 0,
+    "release_late_p99_ms": 0.1326199999999999,
+    "dispatch_late_p99_ms": 0.13197999999999996,
+    "retransmissions": 2
+  },
+  {
+    "case": "B1_fast",
+    "repeat": 0,
+    "tasks": 15,
+    "uploaded": 15,
+    "drops": 0,
+    "release_late_p99_ms": 0.20430999999999858,
+    "dispatch_late_p99_ms": 0.22547999999999999,
+    "retransmissions": 2
+  },
+  {
+    "case": "B1_fast",
+    "repeat": 1,
+    "tasks": 15,
+    "uploaded": 15,
+    "drops": 0,
+    "release_late_p99_ms": 0.22004000000000087,
+    "dispatch_late_p99_ms": 0.10715999999999999,
+    "retransmissions": 2
+  },
+  {
+    "case": "B1_fast",
+    "repeat": 2,
+    "tasks": 15,
+    "uploaded": 15,
+    "drops": 0,
+    "release_late_p99_ms": 0.20636000000000057,
+    "dispatch_late_p99_ms": 0.14818,
+    "retransmissions": 2
+  },
+  {
+    "case": "B1_fixed",
+    "repeat": 0,
+    "tasks": 15,
+    "uploaded": 15,
+    "drops": 0,
+    "release_late_p99_ms": 0.214,
+    "dispatch_late_p99_ms": 0.16467999999999997,
+    "retransmissions": 2
+  },
+  {
+    "case": "B1_fixed",
+    "repeat": 1,
+    "tasks": 15,
+    "uploaded": 15,
+    "drops": 0,
+    "release_late_p99_ms": 0.21209999999999946,
+    "dispatch_late_p99_ms": 0.2598,
+    "retransmissions": 2
+  },
+  {
+    "case": "B1_fixed",
+    "repeat": 2,
+    "tasks": 15,
+    "uploaded": 15,
+    "drops": 0,
+    "release_late_p99_ms": 0.22844000000000053,
+    "dispatch_late_p99_ms": 0.21847999999999995,
+    "retransmissions": 2
+  },
+  {
+    "case": "B1_rtt_elastic",
+    "repeat": 0,
+    "tasks": 15,
+    "uploaded": 15,
+    "drops": 0,
+    "release_late_p99_ms": 0.1741399999999994,
+    "dispatch_late_p99_ms": 0.11921999999999998,
+    "retransmissions": 2
+  },
+  {
+    "case": "B1_rtt_elastic",
+    "repeat": 1,
+    "tasks": 15,
+    "uploaded": 15,
+    "drops": 0,
+    "release_late_p99_ms": 0.1231200000000008,
+    "dispatch_late_p99_ms": 0.09401999999999999,
+    "retransmissions": 2
+  },
+  {
+    "case": "B1_rtt_elastic",
+    "repeat": 2,
+    "tasks": 15,
+    "uploaded": 15,
+    "drops": 0,
+    "release_late_p99_ms": 0.18751999999999952,
+    "dispatch_late_p99_ms": 0.12276,
+    "retransmissions": 2
+  },
+  {
+    "case": "B1_rtt_fast",
+    "repeat": 0,
+    "tasks": 15,
+    "uploaded": 15,
+    "drops": 0,
+    "release_late_p99_ms": 0.1605500000000002,
+    "dispatch_late_p99_ms": 0.24313999999999994,
+    "retransmissions": 2
+  },
+  {
+    "case": "B1_rtt_fast",
+    "repeat": 1,
+    "tasks": 15,
+    "uploaded": 15,
+    "drops": 0,
+    "release_late_p99_ms": 0.129,
+    "dispatch_late_p99_ms": 0.08786,
+    "retransmissions": 3
+  },
+  {
+    "case": "B1_rtt_fast",
+    "repeat": 2,
+    "tasks": 15,
+    "uploaded": 15,
+    "drops": 0,
+    "release_late_p99_ms": 0.136,
+    "dispatch_late_p99_ms": 0.08685999999999999,
+    "retransmissions": 3
+  },
+  {
+    "case": "B1_variable",
+    "repeat": 0,
+    "tasks": 15,
+    "uploaded": 15,
+    "drops": 0,
+    "release_late_p99_ms": 0.19,
+    "dispatch_late_p99_ms": 0.12647999999999998,
+    "retransmissions": 2
+  },
+  {
+    "case": "B1_variable",
+    "repeat": 1,
+    "tasks": 15,
+    "uploaded": 15,
+    "drops": 0,
+    "release_late_p99_ms": 0.19823999999999978,
+    "dispatch_late_p99_ms": 0.17636,
+    "retransmissions": 2
+  },
+  {
+    "case": "B1_variable",
+    "repeat": 2,
+    "tasks": 15,
+    "uploaded": 15,
+    "drops": 0,
+    "release_late_p99_ms": 0.199,
+    "dispatch_late_p99_ms": 0.17532,
+    "retransmissions": 2
+  },
+  {
+    "case": "C1_80pct",
+    "repeat": 0,
+    "tasks": 48,
+    "uploaded": 48,
+    "drops": 0,
+    "release_late_p99_ms": 0.314,
+    "dispatch_late_p99_ms": 0.17459,
+    "retransmissions": 2
+  },
+  {
+    "case": "C1_80pct",
+    "repeat": 1,
+    "tasks": 48,
+    "uploaded": 48,
+    "drops": 0,
+    "release_late_p99_ms": 0.2988399999999999,
+    "dispatch_late_p99_ms": 0.20186000000000007,
+    "retransmissions": 2
+  },
+  {
+    "case": "C1_80pct",
+    "repeat": 2,
+    "tasks": 48,
+    "uploaded": 48,
+    "drops": 0,
+    "release_late_p99_ms": 0.29603999999999997,
+    "dispatch_late_p99_ms": 0.26096,
+    "retransmissions": 2
+  },
+  {
+    "case": "C1_oracle",
+    "repeat": 0,
+    "tasks": 48,
+    "uploaded": 48,
+    "drops": 0,
+    "release_late_p99_ms": 0.3189500000000005,
+    "dispatch_late_p99_ms": 0.18539000000000008,
+    "retransmissions": 2
+  },
+  {
+    "case": "C1_oracle",
+    "repeat": 1,
+    "tasks": 48,
+    "uploaded": 48,
+    "drops": 0,
+    "release_late_p99_ms": 0.31028999999999907,
+    "dispatch_late_p99_ms": 0.19963000000000009,
+    "retransmissions": 2
+  },
+  {
+    "case": "C1_oracle",
+    "repeat": 2,
+    "tasks": 48,
+    "uploaded": 48,
+    "drops": 0,
+    "release_late_p99_ms": 0.3039299999999985,
+    "dispatch_late_p99_ms": 0.25954,
+    "retransmissions": 2
+  },
+  {
+    "case": "C1_reactive",
+    "repeat": 0,
+    "tasks": 82,
+    "uploaded": 82,
+    "drops": 0,
+    "release_late_p99_ms": 0.30349000000000115,
+    "dispatch_late_p99_ms": 0.23933,
+    "retransmissions": 2
+  },
+  {
+    "case": "C1_reactive",
+    "repeat": 1,
+    "tasks": 81,
+    "uploaded": 81,
+    "drops": 0,
+    "release_late_p99_ms": 0.18764000000000033,
+    "dispatch_late_p99_ms": 0.1318000000000002,
+    "retransmissions": 3
+  },
+  {
+    "case": "C1_reactive",
+    "repeat": 2,
+    "tasks": 81,
+    "uploaded": 81,
+    "drops": 0,
+    "release_late_p99_ms": 0.2847999999999992,
+    "dispatch_late_p99_ms": 0.2606,
+    "retransmissions": 2
+  },
+  {
+    "case": "D1_equal",
+    "repeat": 0,
+    "tasks": 48,
+    "uploaded": 48,
+    "drops": 0,
+    "release_late_p99_ms": 0.2809400000000001,
+    "dispatch_late_p99_ms": 0.48868000000000006,
+    "retransmissions": 2
+  },
+  {
+    "case": "D1_equal",
+    "repeat": 1,
+    "tasks": 48,
+    "uploaded": 48,
+    "drops": 0,
+    "release_late_p99_ms": 0.2918799999999992,
+    "dispatch_late_p99_ms": 0.16384000000000004,
+    "retransmissions": 2
+  },
+  {
+    "case": "D1_equal",
+    "repeat": 2,
+    "tasks": 48,
+    "uploaded": 48,
+    "drops": 0,
+    "release_late_p99_ms": 0.309,
+    "dispatch_late_p99_ms": 0.25818000000000024,
+    "retransmissions": 2
+  },
+  {
+    "case": "D1_high",
+    "repeat": 0,
+    "tasks": 48,
+    "uploaded": 48,
+    "drops": 0,
+    "release_late_p99_ms": 0.29422000000000026,
+    "dispatch_late_p99_ms": 0.13689,
+    "retransmissions": 2
+  },
+  {
+    "case": "D1_high",
+    "repeat": 1,
+    "tasks": 48,
+    "uploaded": 48,
+    "drops": 0,
+    "release_late_p99_ms": 0.17445000000000027,
+    "dispatch_late_p99_ms": 0.13948000000000002,
+    "retransmissions": 2
+  },
+  {
+    "case": "D1_high",
+    "repeat": 2,
+    "tasks": 48,
+    "uploaded": 48,
+    "drops": 0,
+    "release_late_p99_ms": 0.2898200000000015,
+    "dispatch_late_p99_ms": 0.2201100000000001,
+    "retransmissions": 2
+  },
+  {
+    "case": "D1_low",
+    "repeat": 0,
+    "tasks": 48,
+    "uploaded": 48,
+    "drops": 0,
+    "release_late_p99_ms": 0.2857999999999997,
+    "dispatch_late_p99_ms": 0.27326000000000006,
+    "retransmissions": 2
+  },
+  {
+    "case": "D1_low",
+    "repeat": 1,
+    "tasks": 48,
+    "uploaded": 48,
+    "drops": 0,
+    "release_late_p99_ms": 0.16567999999999986,
+    "dispatch_late_p99_ms": 0.21414000000000016,
+    "retransmissions": 2
+  },
+  {
+    "case": "D1_low",
+    "repeat": 2,
+    "tasks": 48,
+    "uploaded": 48,
+    "drops": 0,
+    "release_late_p99_ms": 0.259,
+    "dispatch_late_p99_ms": 0.17508000000000004,
+    "retransmissions": 2
+  },
+  {
+    "case": "D1_native",
+    "repeat": 0,
+    "tasks": 48,
+    "uploaded": 48,
+    "drops": 0,
+    "release_late_p99_ms": 0.3396600000000008,
+    "dispatch_late_p99_ms": 0.15765,
+    "retransmissions": 2
+  },
+  {
+    "case": "D1_native",
+    "repeat": 1,
+    "tasks": 48,
+    "uploaded": 48,
+    "drops": 0,
+    "release_late_p99_ms": 0.3306000000000004,
+    "dispatch_late_p99_ms": 0.19351000000000007,
+    "retransmissions": 2
+  },
+  {
+    "case": "D1_native",
+    "repeat": 2,
+    "tasks": 48,
+    "uploaded": 48,
+    "drops": 0,
+    "release_late_p99_ms": 0.2994199999999978,
+    "dispatch_late_p99_ms": 0.2911800000000001,
+    "retransmissions": 2
+  },
+  {
+    "case": "D1_pattern",
+    "repeat": 0,
+    "tasks": 48,
+    "uploaded": 48,
+    "drops": 0,
+    "release_late_p99_ms": 0.30989000000000033,
+    "dispatch_late_p99_ms": 0.28608000000000017,
+    "retransmissions": 2
+  },
+  {
+    "case": "D1_pattern",
+    "repeat": 1,
+    "tasks": 48,
+    "uploaded": 48,
+    "drops": 0,
+    "release_late_p99_ms": 0.32059999999999994,
+    "dispatch_late_p99_ms": 0.19663000000000008,
+    "retransmissions": 2
+  },
+  {
+    "case": "D1_pattern",
+    "repeat": 2,
+    "tasks": 48,
+    "uploaded": 48,
+    "drops": 0,
+    "release_late_p99_ms": 0.3298300000000004,
+    "dispatch_late_p99_ms": 0.26493000000000005,
+    "retransmissions": 2
+  }
+]

@@ -1,5 +1,7 @@
 # QUIC / 6G-Testbed 网络波动实验
 
+**BBRv3 独立复测**：[A1–D1、逐包判丢和在线 MiniCPM 对照](REPORT.bbr3.zh-CN.md) · [BBRv3 构建与复现](bbr3/README.md) · [分组对照结果](results/bbr3/burst-comparison.csv)
+
 **独立专题报告**：[QUIC 与 5G 上行调度的双环拥塞控制](REPORT.cc-bsr.zh-CN.md) · [发包节奏、平滑 RTT 和 BBR 窗口计算](REPORT.pacing.zh-CN.md) · [逐包时延、判丢与迟到重传](REPORT.loss-detection.zh-CN.md) · [补测数据与复现](studies/pacing_loss/README.md)
 
 **第三版**使用原生 QUIC BBRv1 比较四种黄金管道机制，覆盖稳定容量、按任务授权、提前选择上传数据量和分段 pacing。[第三版报告](REPORT.v3.zh-CN.md) · [复现](v3/README.md) · [分组结果](results/v3/task-summary.csv)

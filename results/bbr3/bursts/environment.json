@@ -1,0 +1,39 @@
+{
+  "testbed": "7231ae8e5670b67564cf28d397c2820d9403ecdc",
+  "picoquic": "37bb5d28aaea417649a6d4facc15f54de7d55829",
+  "algorithm": "picoquic-bbr3",
+  "suite": "bursts",
+  "kernel": "6.6.87.2-microsoft-standard-WSL2",
+  "testbed_hashes": {
+    "netemu/src/netemu/emulator.py": "0a45366e147ac0dca72991bd828ce12bf9d645b10c295a18080c1ea5d4835169",
+    "netemu/src/netemu/profile.py": "9e058fb364d583e6b066637083a033ebad1de6db3d20ba2f32a81a16a8193848",
+    "aitestbed/analysis/logger.py": "459e1a26fee01a2e317255f9d1356e5dda3a4790c91e2678013654dfe530789d"
+  },
+  "endpoint_hash": "531ce221977e723c1ad293985573860709892c7917ff50ea539388b0f3ec9de5",
+  "cases": [
+    "A1_random",
+    "A1_equal20",
+    "A1_gold",
+    "A1load_random",
+    "A1load_equal20",
+    "A1load_gold",
+    "B1_fixed",
+    "B1_variable",
+    "B1_elastic",
+    "B1_fast",
+    "C1_reactive",
+    "C1_oracle",
+    "C1_80pct",
+    "D1_native",
+    "D1_high",
+    "D1_low",
+    "D1_equal",
+    "D1_pattern",
+    "A1load_slow",
+    "B1_rtt_elastic",
+    "B1_rtt_fast"
+  ],
+  "repeats": 3,
+  "clock": "CLOCK_MONOTONIC in all three WSL2 namespaces",
+  "qlog": true
+}

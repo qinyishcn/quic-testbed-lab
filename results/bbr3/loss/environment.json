@@ -1,0 +1,28 @@
+{
+  "testbed": "7231ae8e5670b67564cf28d397c2820d9403ecdc",
+  "picoquic": "37bb5d28aaea417649a6d4facc15f54de7d55829",
+  "algorithm": "picoquic-bbr3",
+  "suite": "loss",
+  "kernel": "6.6.87.2-microsoft-standard-WSL2",
+  "testbed_hashes": {
+    "netemu/src/netemu/emulator.py": "0a45366e147ac0dca72991bd828ce12bf9d645b10c295a18080c1ea5d4835169",
+    "netemu/src/netemu/profile.py": "9e058fb364d583e6b066637083a033ebad1de6db3d20ba2f32a81a16a8193848",
+    "aitestbed/analysis/logger.py": "459e1a26fee01a2e317255f9d1356e5dda3a4790c91e2678013654dfe530789d"
+  },
+  "endpoint_hash": "4dde6e80bd2e3cc9da9465cd0f69d8ec4bdc4f164a688e926561b132af619902",
+  "cases": [
+    "steady",
+    "one_delay5",
+    "one_delay80",
+    "true_drop",
+    "fifo_pause80",
+    "ack_pause80",
+    "jitter5_reorder",
+    "jitter5_fifo",
+    "rack_tail35"
+  ],
+  "repeats": 3,
+  "clock": "CLOCK_MONOTONIC in all three WSL2 namespaces",
+  "measured_tasks_per_run": 6,
+  "duration_us": 3700000
+}
