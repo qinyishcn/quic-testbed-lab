@@ -1,0 +1,4 @@
+case,tasks,first_10ms_nominal_ip_bytes,first_10ms_median_forwarded_ip_bytes,first_10ms_median_share_of_nominal_pct,first_10ms_nominal_gap_ip_bytes,first_20ms_median_peak_queue_bytes,median_upload_ms,completed_within_20ms
+D1_native,72,37500,35840.0,95.57,1660.0,19196.5,19.6745,64
+D1_equal,72,37500,26880.0,71.68,10620.0,8960.0,24.303,0
+D1_pattern,72,37500,35840.0,95.57,1660.0,3840.0,20.2615,0
