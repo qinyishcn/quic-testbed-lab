@@ -1,0 +1,17 @@
+{
+  "runs": 27,
+  "tasks": 162,
+  "packets": 16316,
+  "loss_declarations": 195,
+  "all_native_loss_events_match_qlog": true,
+  "all_packet_send_times_match_timer_observations": true,
+  "all_qlog_arrivals_match_capture": true,
+  "no_negative_one_way_delays": true,
+  "no_capture_kernel_drops": true,
+  "qlog_all_packets_enabled": true,
+  "warmup_excluded_from_measured_statistics": true,
+  "pcap_qlog_delay_absdiff_p50_ms": 0.051355000000000595,
+  "pcap_qlog_delay_absdiff_p99_ms": 0.31401326000000723,
+  "pcap_qlog_delay_absdiff_max_ms": 1.169756,
+  "archive_members": 516
+}

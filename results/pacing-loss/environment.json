@@ -1,0 +1,31 @@
+{
+  "testbed": "7231ae8e5670b67564cf28d397c2820d9403ecdc",
+  "picoquic": "37bb5d28aaea417649a6d4facc15f54de7d55829",
+  "kernel": "6.6.87.2-microsoft-standard-WSL2",
+  "testbed_hashes": {
+    "netemu/src/netemu/emulator.py": "0a45366e147ac0dca72991bd828ce12bf9d645b10c295a18080c1ea5d4835169",
+    "netemu/src/netemu/profile.py": "9e058fb364d583e6b066637083a033ebad1de6db3d20ba2f32a81a16a8193848",
+    "aitestbed/analysis/logger.py": "459e1a26fee01a2e317255f9d1356e5dda3a4790c91e2678013654dfe530789d"
+  },
+  "endpoint_hash": "58d80a2bd7aa4530b9a6e890f841e5c41834c24295bb09dbd83d25b80e3727d5",
+  "scripts": {
+    "build.py": "dd866778172a55b1dc0095ed86ec08918d88e90d905f1b959c0bedde933955f4",
+    "experiment.py": "1fc8bc9b035823c305b945465ad9ae4466fe927da2195b52a24a3d0f96eab2a6",
+    "relay.py": "bb9ba5dace8aab303e78cafb02ef20fbd835f415fe3cd06487021939629d0710"
+  },
+  "cases": [
+    "steady",
+    "one_delay5",
+    "one_delay80",
+    "true_drop",
+    "fifo_pause80",
+    "ack_pause80",
+    "jitter5_reorder",
+    "jitter5_fifo",
+    "rack_tail35"
+  ],
+  "repeats": 3,
+  "measured_tasks_per_run": 6,
+  "duration_us": 3700000,
+  "clock": "CLOCK_MONOTONIC in all three namespaces on one WSL2 host"
+}
