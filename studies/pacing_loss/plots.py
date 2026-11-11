@@ -2,7 +2,9 @@
 
 import argparse
 import csv
+import gzip
 import sys
+from collections import defaultdict
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -27,6 +29,67 @@ LABELS = {
 def read(path):
     with path.open(newline="",encoding="utf-8") as handle:
         return list(csv.DictReader(handle))
+
+
+def delay_cdf(output):
+    samples = defaultdict(list)
+    with gzip.open(output / "packets.csv.gz", "rt", encoding="utf-8") as handle:
+        for row in csv.DictReader(handle):
+            delay = row["one_way_ms"]
+            if not delay:
+                continue
+            direction = row["direction"]
+            if direction == "forward" and row["measured"] == "1":
+                samples[direction, row["case"]].append(float(delay))
+            elif direction == "reverse" and row["packet_type"] == "1RTT" and float(row["send_ms"]) >= 1200:
+                samples[direction, row["case"]].append(float(delay))
+
+    colors = {
+        "steady": "#303941",
+        "one_delay5": "#b66a15",
+        "one_delay80": "#70538f",
+        "jitter5_fifo": "#117e8b",
+        "jitter5_reorder": "#4163aa",
+        "rack_tail35": "#8c641e",
+        "fifo_pause80": "#b54445",
+        "ack_pause80": "#a2477d",
+        "true_drop": "#567847",
+    }
+    fig, axes = plt.subplots(2, 2, figsize=(12.6, 8.3), layout="constrained")
+    fig.suptitle("BBRv1 逐包单向时延的累积分布", fontweight="bold", fontsize=15)
+    short = ("steady", "one_delay5", "jitter5_fifo", "jitter5_reorder", "ack_pause80", "true_drop")
+    tail = ("steady", "one_delay80", "rack_tail35", "fifo_pause80")
+    reverse_focus = ("steady", "ack_pause80")
+    panels = (
+        ("forward", short, (0, 11), "甲｜前向数据包，时延较短的六组"),
+        ("forward", tail, (0, 85), "乙｜前向数据包，长延迟条件与基线"),
+        ("reverse", reverse_focus, (1, 2.1), "丙｜回程包，1–2.1 ms 放大"),
+        ("reverse", reverse_focus, (0, 85), "丁｜回程包，完整时延范围"),
+    )
+    for ax, (direction, cases, limits, title) in zip(axes.flat, panels):
+        def curve(case, **kwargs):
+            ordered = sorted(samples[direction, case])
+            n = len(ordered)
+            if not n:
+                raise ValueError(f"no arrived packets for {direction}/{case}")
+            x = [0, *ordered, max(limits[1], ordered[-1])]
+            y = [0, *(100*i/n for i in range(1, n+1)), 100]
+            ax.step(x, y, where="post", **kwargs)
+
+        if direction == "reverse":
+            other_cases = [case for case in LABELS if case not in cases]
+            for index, case in enumerate(other_cases):
+                curve(case, color="#a3adb6", alpha=.52, linewidth=.9,
+                      label="其余七种条件" if index == 0 else None)
+        for case in cases:
+            n = len(samples[direction, case])
+            curve(case, color=colors[case], linewidth=1.9, label=f"{LABELS[case]}（{n} 包）",
+                  linestyle="--" if case in ("steady", "true_drop") else "-")
+        ax.set(xlim=limits, ylim=(-2, 104), xlabel="单向时延（ms）")
+        ax.set_yticks((0, 25, 50, 75, 100))
+        style(ax, title, "不超过横轴时延的包占比（%）")
+        ax.legend(loc="lower right", fontsize=8.4, framealpha=.95)
+    figure(output, "delay-cdf", fig)
 
 
 def delay_figure(output, summary, losses):
@@ -109,6 +172,7 @@ def main():
     summary = {row["case"]:row for row in read(args.results / "summary.csv")}
     losses = [row for row in read(args.results / "loss-events.csv")
               if row["direction"] == "forward" and row["measured"] == "1"]
+    delay_cdf(args.results)
     delay_figure(args.results,summary,losses)
     timelines(args.results,losses)
 
