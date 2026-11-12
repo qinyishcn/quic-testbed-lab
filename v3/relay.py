@@ -22,6 +22,18 @@ def open_port(host):
     return sock
 
 
+def service_finish(bounds, rates, start, bits):
+    index = max(0, bisect.bisect_right(bounds, start)-1)
+    while index+1 < len(bounds):
+        span = bounds[index+1] - start
+        if bits <= span*rates[index]:
+            break
+        bits -= span*rates[index]
+        index += 1
+        start = bounds[index]
+    return start + bits/rates[index]
+
+
 def main(work, origin, duration):
     plan = json.loads((work / "plan.json").read_text())
     offsets, rates = zip(*plan["capacity"])
@@ -32,17 +44,6 @@ def main(work, origin, duration):
     queue = deque()
     prior_due = 0
     backlog = 0
-
-    def finish(start, bits):
-        index = max(0, bisect.bisect_right(bounds, start)-1)
-        while index+1 < len(bounds):
-            span = bounds[index+1] - start
-            if bits <= span*rates[index]:
-                break
-            bits -= span*rates[index]
-            index += 1
-            start = bounds[index]
-        return start + bits/rates[index]
 
     with (work / "wire.csv").open("w", newline="") as stream:
         log = csv.writer(stream)
@@ -70,7 +71,7 @@ def main(work, origin, duration):
                     if len(queue) >= 256:
                         log.writerow(("drop", now, ip_bytes, backlog, 0))
                         continue
-                    prior_due = finish(max(now, prior_due), ip_bytes*8)
+                    prior_due = service_finish(bounds, rates, max(now, prior_due), ip_bytes*8)
                     backlog += ip_bytes
                     queue.append((prior_due, payload, ip_bytes))
                     log.writerow(("in", now, ip_bytes, backlog, round(prior_due)))

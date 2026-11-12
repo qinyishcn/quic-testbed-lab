@@ -1,0 +1,2 @@
+version,task,run,case,packet_number,send_ms,one_way_ms,confirmation_ms,ack_reverse_ms,relay_ingress_ms,relay_egress_ms,loss_reason,deadline_age_ms,age_at_loss_ms,effective_timer_at_loss_ms,first_repeat_send_ms,first_repeat_receive_ms
+BBRv3,2,deep_slow__00,deep_slow,293,1552.691,21.063,22.59,0.127,1553.013,1573.619,timer,17.728,17.81,15.197,1570.501,1608.058

@@ -8,8 +8,12 @@ import json
 import random
 import select
 import socket
+import sys
 import time
 from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+from v3.relay import service_finish
 
 
 CLIENT = ("10.206.0.2", 4433)
@@ -26,6 +30,12 @@ def port(address):
 
 def main(work, origin, duration):
     plan = json.loads((work / "plan.json").read_text())
+    rate_only = "capacity" in plan
+    if rate_only:
+        offsets, rates = zip(*plan["capacity"])
+        bounds = [origin + t for t in offsets]
+        if plan["impairments"] or min(rates) <= 0:
+            raise ValueError("Rate-only plans require positive rates and no delay or loss interventions")
     rng = random.Random(plan["seed"])
     client, server = port("10.206.0.1"), port("10.207.0.1")
     queue, sequence = [], 0
@@ -56,6 +66,21 @@ def main(work, origin, duration):
                     direction = "forward" if sock is client else "reverse"
                     sequence += 1
                     digest = hashlib.sha256(payload).hexdigest()
+                    if rate_only:
+                        if direction == "reverse":
+                            client.sendto(payload, CLIENT)
+                            sent = time.monotonic_ns()//1000
+                            log.writerow(("in", now, direction, sequence, len(payload), digest, now, "direct"))
+                            log.writerow(("out", sent, direction, sequence, len(payload), digest, now, "direct"))
+                            continue
+                        if len(queue) >= plan["buffer_packets"]:
+                            log.writerow(("drop", now, direction, sequence, len(payload), digest, 0, "buffer_full"))
+                            continue
+                        due = service_finish(bounds, rates, max(now, service_end[direction]), (len(payload)+28)*8)
+                        service_end[direction] = due
+                        heapq.heappush(queue, (due, sequence, direction, payload, digest, "rate_fifo"))
+                        log.writerow(("in", now, direction, sequence, len(payload), digest, round(due), "rate_fifo"))
+                        continue
                     # Rate is an IP service budget. 1 bit/us equals 1 Mbps.
                     rate = 20 if direction == "forward" else 1000
                     due = max(now, service_end[direction]) + (len(payload)+28)*8/rate

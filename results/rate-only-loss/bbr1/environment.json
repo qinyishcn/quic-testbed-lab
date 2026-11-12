@@ -1,0 +1,35 @@
+{
+  "testbed": "7231ae8e5670b67564cf28d397c2820d9403ecdc",
+  "picoquic": "37bb5d28aaea417649a6d4facc15f54de7d55829",
+  "algorithm": "picoquic-bbr1",
+  "endpoint_hash": "58d80a2bd7aa4530b9a6e890f841e5c41834c24295bb09dbd83d25b80e3727d5",
+  "kernel": "6.6.87.2-microsoft-standard-WSL2",
+  "testbed_hashes": {
+    "netemu/src/netemu/emulator.py": "0a45366e147ac0dca72991bd828ce12bf9d645b10c295a18080c1ea5d4835169",
+    "netemu/src/netemu/profile.py": "9e058fb364d583e6b066637083a033ebad1de6db3d20ba2f32a81a16a8193848",
+    "aitestbed/analysis/logger.py": "459e1a26fee01a2e317255f9d1356e5dda3a4790c91e2678013654dfe530789d"
+  },
+  "runner_hash": "c2a55027450d58c4c3806ab78899c2c7ef0d7ca82bcb50bb1c50a947cc2428ae",
+  "router_qdiscs": {
+    "r0": "noqueue",
+    "r1": "noqueue"
+  },
+  "relay_hash": "bf97f37fe1fb694519ff8362804db0fe82d7e0aaf9eb4111fd751439eebfc817",
+  "service_hash": "0a3188ab7573001da6c0dfde5f2badd790d7b7de64bd7679064176875a0b503c",
+  "measured_tasks_per_run": 6,
+  "duration_us": 3700000,
+  "cases": [
+    "fixed20",
+    "small_fast",
+    "small_slow",
+    "wide_fast",
+    "wide_slow",
+    "deep_fast",
+    "deep_slow"
+  ],
+  "repeats": 3,
+  "reverse": "direct forwarding",
+  "added_delay_us": 0,
+  "buffer_packets": 256,
+  "clock": "CLOCK_MONOTONIC on one WSL2 host"
+}

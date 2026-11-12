@@ -1,0 +1,4 @@
+version,run,case,reason,packet_number,send_ms,original_arrival_ms,original_ack_ms,deadline_age_ms,decision_age_ms,ack_minus_deadline_ms
+BBRv3,deep_slow__00,deep_slow,timer,293,1552.691,21.063,22.59,17.728,17.81,4.862
+BBRv3,deep_slow__01,deep_slow,timer,433,2950.328,41.43,43.229,37.771,37.864,5.458
+BBRv3,deep_slow__02,deep_slow,timer,291,1555.174,20.97,22.475,20.937,21.048,1.538

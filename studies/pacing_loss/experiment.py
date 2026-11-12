@@ -46,18 +46,20 @@ def plan_for(case, repeat):
                 tasks=tasks, impairments=impairments)
 
 
-def run_case(args, namespaces, case, repeat, emulator, logger):
+def run_case(args, namespaces, case, repeat, emulator, logger, plan=None):
     from analysis.logger import LogRecord
     work = args.out / f"{case}__{repeat:02d}"
     work.mkdir()
     client, router, server = namespaces
-    with in_namespace(router):
-        for interface in ("r0", "r1"):
-            shaper = emulator(interface=interface, profiles_path=str(args.out / "profiles.yaml"),
-                              bidirectional=False)
-            if not shaper.apply_profile("propagation"):
-                raise RuntimeError("Testbed could not apply the fixed propagation delay")
-    plan = plan_for(case, repeat)
+    if plan is None:
+        plan = plan_for(case, repeat)
+    if "capacity" not in plan:
+        with in_namespace(router):
+            for interface in ("r0", "r1"):
+                shaper = emulator(interface=interface, profiles_path=str(args.out / "profiles.yaml"),
+                                  bidirectional=False)
+                if not shaper.apply_profile("propagation"):
+                    raise RuntimeError("Testbed could not apply the fixed propagation delay")
     # Readiness is checked before either endpoint starts. Handshake has one second before measurements.
     origin = time.monotonic_ns()//1000+600_000
     plan["origin"] = origin
