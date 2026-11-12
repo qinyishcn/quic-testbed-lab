@@ -37,21 +37,29 @@ def run_files(folder):
     return runs
 
 
-def ack_times(folder):
-    first_ack = {}
+def packet_times(folder):
+    first_ack, first_warmup_send = {}, {}
     with gzip.open(folder / "packets.csv.gz", "rt", encoding="utf-8") as stream:
         for row in csv.DictReader(stream):
-            if row["direction"] != "forward" or not row["ack_receive_ms"]:
+            if row["direction"] != "forward":
+                continue
+            stream_ids = row["stream_ids"].split("|")
+            if "0" in stream_ids and int(row["stream_bytes"]) > 0:
+                send_us = round(float(row["send_ms"]) * 1000)
+                previous = first_warmup_send.get(row["run"])
+                if previous is None or send_us < previous[0]:
+                    first_warmup_send[row["run"]] = (send_us, row["sha256"])
+            if not row["ack_receive_ms"]:
                 continue
             time_us = round(float(row["ack_receive_ms"]) * 1000)
-            for stream_id in row["stream_ids"].split("|"):
+            for stream_id in stream_ids:
                 if stream_id:
                     key = row["run"], int(stream_id) // 4
                     first_ack[key] = min(first_ack.get(key, time_us), time_us)
-    return first_ack
+    return first_ack, first_warmup_send
 
 
-def analyze(version, run, files, acks):
+def analyze(version, run, files, acks, first_warmup_send):
     plan = files["plan.json"]
     schedule = [(t["warmup"], t["size"]) for t in plan["tasks"]]
     if schedule != [(True, 300_000)] + [(False, 40_000)] * 6:
@@ -64,6 +72,11 @@ def analyze(version, run, files, acks):
     samples = [dict(t=int(r["us"]) - origin, cwnd=int(r["cwnd"]), inflight=int(r["inflight"]),
                     pace=int(r["pacing_bps"]), state=int(r["state"]) & 255) for r in files["samples.csv"]]
     sends = [dict(t=int(r["us"]) - origin, cwnd=int(r["cwnd"])) for r in files["client-sent.csv"]]
+    warmup_send_us, digest = first_warmup_send
+    send_matches = [r for r in files["client-sent.csv"] if int(r["us"]) == origin + warmup_send_us and r["sha256"] == digest]
+    if len(send_matches) != 1 or not starts[0] <= warmup_send_us < acks[run, 0]:
+        raise ValueError(f"Could not match the first warm-up data send for {version} {run}")
+    first_data = send_matches[0]
     before = max((r for r in samples if r["t"] <= starts[0]), key=lambda r: r["t"])
     first_exit = next((r for r in samples if r["t"] >= starts[0] and r["state"] != 0), None)
     startup_end = min(ends[0]+1, first_exit["t"]) if first_exit else ends[0]+1
@@ -72,6 +85,10 @@ def analyze(version, run, files, acks):
     first_probe = next((r for r in samples if r["t"] >= starts[0] and r["state"] in probe_states), None)
     startup = dict(version=version, run=run, case=plan["case"], initial_send_window_bytes=sends[0]["cwnd"],
                    warmup_bytes=plan["tasks"][0]["size"], warmup_start_ms=starts[0]/1000,
+                   warmup_first_data_after_submit_ms=(warmup_send_us-starts[0])/1000,
+                   warmup_first_data_window_bytes=int(first_data["cwnd"]),
+                   warmup_first_data_udp_bytes=int(first_data["udp_bytes"]),
+                   warmup_first_data_inflight_bytes=int(first_data["inflight"]),
                    warmup_first_ack_ms=(acks[run, 0]-starts[0])/1000,
                    warmup_baseline_bytes=before["cwnd"], startup_peak_bytes=peak["cwnd"],
                    startup_peak_ms=(peak["t"]-starts[0])/1000, startup_growth_ratio=round(peak["cwnd"]/before["cwnd"], 5),
@@ -144,9 +161,9 @@ def main():
     windows, tasks, traces, examples = [], [], [], {}
     for version, name in VERSIONS.items():
         folder = source / name
-        acks = ack_times(folder)
+        acks, warmup_sends = packet_times(folder)
         for run, files in sorted(run_files(folder).items()):
-            result = analyze(version, run, files, acks)
+            result = analyze(version, run, files, acks, warmup_sends[run])
             summary, request_rows, samples, starts, _, _ = result
             windows.append(summary)
             tasks.extend(request_rows)
