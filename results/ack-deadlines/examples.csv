@@ -1,0 +1,9 @@
+version,case,run,reason,packet_number,send_ms,original_arrival_ms,original_ack_ms,ack_return_path_ms,decision_age_ms,deadline_age_ms,highest_acked_packet,ack_gap,later_ack_ms,base_timer_ms,effective_timer_ms,rack_candidate_ms,pto_tail_offset_ms,first_repeat_packet,repeat_send_age_ms,repeat_arrival_age_ms
+BBRv1,one_delay5,one_delay5__00,packet_number,257,1200.109,6.728,9.484,1.341,5.133,,261,4,5.133,36.564,36.564,,,272,5.422,9.49
+BBRv1,rack_tail35,rack_tail35__00,rack_time,257,1200.132,37.275,40.825,1.579,16.599,16.354,258,1,4.763,24.455,24.455,16.354,,259,16.599,18.984
+BBRv1,fifo_pause80,fifo_pause80__00,timer,256,1200.171,81.332,83.109,1.448,40.271,40.249,253,-3,,34.242,34.242,,6.007,274,40.271,81.655
+BBRv1,ack_pause80,ack_pause80__00,timer,257,1200.221,2.356,81.242,76.888,28.401,28.309,254,-3,,22.534,22.534,,5.775,274,28.401,30.469
+BBRv3,one_delay5,one_delay5__00,packet_number,256,1200.211,7.485,10.627,1.232,6.067,,261,5,6.067,19.199,19.199,,,269,6.15,8.735
+BBRv3,rack_tail35,rack_tail35__00,rack_time,257,1200.103,37.044,40.324,1.506,15.745,15.657,258,1,3.914,24.585,24.585,15.657,,259,15.745,17.682
+BBRv3,fifo_pause80,fifo_pause80__00,timer,255,1200.208,81.347,83.196,1.512,27.38,27.289,252,-3,,18.14,18.14,,9.149,275,27.38,81.654
+BBRv3,ack_pause80,ack_pause80__00,timer,257,1200.241,1.813,81.099,77.342,24.533,24.449,256,-1,,16.327,16.327,,8.122,279,24.533,26.754
