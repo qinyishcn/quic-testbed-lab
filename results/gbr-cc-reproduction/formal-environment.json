@@ -1,0 +1,36 @@
+{
+  "upstream": "53cb31a862ca75bd4ee4a500db4161a9b739348b",
+  "openssl": "3638fd45af31a5982d6c279c37afb58799201277",
+  "testbed": "7231ae8e5670b67564cf28d397c2820d9403ecdc",
+  "testbed_hashes": {
+    "netemu/src/netemu/emulator.py": "0a45366e147ac0dca72991bd828ce12bf9d645b10c295a18080c1ea5d4835169",
+    "netemu/src/netemu/profile.py": "9e058fb364d583e6b066637083a033ebad1de6db3d20ba2f32a81a16a8193848",
+    "aitestbed/analysis/logger.py": "459e1a26fee01a2e317255f9d1356e5dda3a4790c91e2678013654dfe530789d"
+  },
+  "kernel": "6.6.87.2-microsoft-standard-WSL2",
+  "binaries": {
+    "sender": {
+      "perf": "a6f24da66c8f9b1888aef709f16fb71735fa4797e8d44bbc727d743d5217b1da",
+      "lib": "26234049ee0aff93f43ece749b28c6eeb8065aaf596b204f41c488dcc5d0c1ba"
+    },
+    "receiver": {
+      "perf": "2ae2ff3a6070c3b8a0f4af6c33fbe90b149e9073abb0181ada9b880bed9cf1d1",
+      "lib": "a6a32103bc58eefbf63fe438418797d4c54614233f8236297c4f5da873dee0f1"
+    }
+  },
+  "repeats": 5,
+  "profiles": [
+    "steady",
+    "radio_step",
+    "radio_fast",
+    "backhaul_step"
+  ],
+  "modes": [
+    "bbr",
+    "gbr"
+  ],
+  "upload_bytes": 20000000,
+  "sample_period_us": 5000,
+  "forward_delay_ms": 10,
+  "reverse_delay_ms": 10
+}

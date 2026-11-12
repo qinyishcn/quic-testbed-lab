@@ -1,0 +1,20 @@
+{
+  "sent": 1410,
+  "consumed": 1405,
+  "last_seen": 1408,
+  "smoothing_error_p99": 0.0009999999687450457,
+  "gain_error_p99": 0.0009999969203662307,
+  "pace_step_error_p99_Bps": 0.8394547747634354,
+  "window_error_max_bytes": 1,
+  "gap_start_us": 2080000,
+  "gap_end_us": 2270000,
+  "gap_ack_samples": 225,
+  "gap_sequences": [
+    339
+  ],
+  "gap_pacing_targets_Bps": [
+    2024933
+  ],
+  "gap_radio_ip_packets": 446,
+  "gap_radio_ip_bytes": 669000
+}
