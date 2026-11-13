@@ -8,6 +8,8 @@
 
 **拥塞窗口启动实测**：[BBRv1 和 BBRv3 的连接预热及首笔正式请求](REPORT.bbr-startup.zh-CN.md)
 
+**空口容量失配实测**：[突升、深度降速、分段恢复和逐包随机等待](REPORT.pacing-mismatch.zh-CN.md)
+
 **第三版**使用原生 QUIC BBRv1 比较四种黄金管道机制，覆盖稳定容量、按任务授权、提前选择上传数据量和分段 pacing。[第三版报告](REPORT.v3.zh-CN.md) · [复现](v3/README.md) · [分组结果](results/v3/task-summary.csv)
 
 **专题问答报告**解释 pacing 与 cwnd、稳时延和稳速率的价值、网络侧如何配合，并补做判丢阈值和分档交付分析。[阅读问答报告](REPORT.qa.zh-CN.md)

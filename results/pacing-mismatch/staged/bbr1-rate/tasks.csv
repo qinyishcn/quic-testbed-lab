@@ -1,0 +1,7 @@
+run,case,repeat,task,bytes,start_ms,upload_ms,on_time20
+staged__00,staged,0,1,200000,1199.125,297.91,0
+staged__00,staged,0,2,40000,1500.064,3.799,1
+staged__01,staged,1,1,200000,1199.065,297.838,0
+staged__01,staged,1,2,40000,1500.068,3.809,1
+staged__02,staged,2,1,200000,1199.152,297.879,0
+staged__02,staged,2,2,40000,1500.065,3.979,1

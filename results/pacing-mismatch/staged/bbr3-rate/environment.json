@@ -1,0 +1,26 @@
+{
+  "testbed": "7231ae8e5670b67564cf28d397c2820d9403ecdc",
+  "picoquic": "37bb5d28aaea417649a6d4facc15f54de7d55829",
+  "testbed_hashes": {
+    "netemu/src/netemu/emulator.py": "0a45366e147ac0dca72991bd828ce12bf9d645b10c295a18080c1ea5d4835169",
+    "netemu/src/netemu/profile.py": "9e058fb364d583e6b066637083a033ebad1de6db3d20ba2f32a81a16a8193848",
+    "aitestbed/analysis/logger.py": "459e1a26fee01a2e317255f9d1356e5dda3a4790c91e2678013654dfe530789d"
+  },
+  "kernel": "6.6.87.2-microsoft-standard-WSL2",
+  "router_qdiscs": {
+    "r0": "noqueue",
+    "r1": "noqueue"
+  },
+  "endpoint_hash": "4dde6e80bd2e3cc9da9465cd0f69d8ec4bdc4f164a688e926561b132af619902",
+  "runner_hash": "5c9372fa3d19a63fe3411ed317a82f7ce0ef75d7a6fd4117c52be704b734ad12",
+  "relay_hash": "e6bae88938af74651c3c7be3f2fce8c9aef93ec7ed68ea94b7d2c7a708cd0344",
+  "cases": [
+    "staged"
+  ],
+  "repeats": 3,
+  "measured_tasks_per_run": 2,
+  "mode": "bbr3-rate",
+  "added_delay_us": 0,
+  "reverse": "direct",
+  "gate": null
+}

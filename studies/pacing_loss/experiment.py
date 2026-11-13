@@ -53,6 +53,7 @@ def run_case(args, namespaces, case, repeat, emulator, logger, plan=None):
     client, router, server = namespaces
     if plan is None:
         plan = plan_for(case, repeat)
+    duration = plan["duration"]
     if "capacity" not in plan:
         with in_namespace(router):
             for interface in ("r0", "r1"):
@@ -72,7 +73,7 @@ def run_case(args, namespaces, case, repeat, emulator, logger, plan=None):
     processes, captures = [], []
     try:
         relay = launch(router, (sys.executable, Path(__file__).with_name("relay.py"), work,
-                               origin, DURATION), work / "relay.log")
+                               origin, duration), work / "relay.log")
         processes.append(relay)
         wait_ready(work / "relay-ready", relay, work / "relay.log")
         for role, namespace, iface in (("client", client, "c0"), ("server", server, "s0")):
@@ -84,11 +85,14 @@ def run_case(args, namespaces, case, repeat, emulator, logger, plan=None):
                     raise RuntimeError("packet capture failed")
                 time.sleep(.005)
         for role, namespace in (("server", server), ("client", client)):
-            processes.append(launch(namespace, (args.endpoint, role, work, origin, DURATION, "qlog"),
+            processes.append(launch(namespace, (args.endpoint, role, work, origin, duration, "qlog"),
                                     work / (role+".log")))
         for process in processes:
-            if process.wait(timeout=8):
+            if process.wait(timeout=duration / 1e6 + 4):
                 raise RuntimeError(f"{work.name}: child process failed")
+        if "gate" in plan:
+            # Let libpcap drain its final batch before tcpdump handles SIGINT.
+            time.sleep(.5)
     finally:
         for process in processes:
             stop_process(process, signal.SIGTERM)
