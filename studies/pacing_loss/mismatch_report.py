@@ -230,7 +230,7 @@ def tables(runs, out, spans=SPANS):
 
 
 def plot_pair(runs, case, bounds, out, suffix="", *, modes=("bbr3-rate", "bbr3-gate"),
-              caption=None, bin_ms=None):
+              caption=None, bin_ms=None, mark_upload=False):
     fig, axes = plt.subplots(4, 2, figsize=(13.4, 9), sharex="col", layout="constrained")
     title = "容量突升时的供给不足" if case == "rise" else "速率深跌、探测超时与容量回升"
     fig.suptitle(caption or title + ("后的毫秒放大" if suffix else ""), fontsize=16, fontweight="bold")
@@ -290,6 +290,12 @@ def plot_pair(runs, case, bounds, out, suffix="", *, modes=("bbr3-rate", "bbr3-g
             for ax in axes[:, j]:
                 if left <= t <= right:
                     ax.axvline(t, color=CAP, alpha=.55, lw=.8, ls="--")
+        if mark_upload:
+            upload = next(r for r in rows["tasks"] if r["task"] == "1")
+            end = float(upload["start_ms"]) + float(upload["upload_ms"]) - CHANGE
+            for ax in axes[:, j]:
+                ax.axvline(end, color="#a46220", lw=1.25, ls=":",
+                           label="200 kB 收齐" if ax is rate else None)
         if mode.endswith("-reverse"):
             kind = "上行随机等待＋回程随机时延"
         else:

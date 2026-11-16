@@ -1,0 +1,6 @@
+run,case,repeat,task,bytes,start_ms,upload_ms,on_time20
+bounded_rise_long__00,bounded_rise_long,0,1,3000000,1199.08,1142.329,0
+bounded_rise_long__01,bounded_rise_long,1,1,3000000,1199.152,1403.591,0
+bounded_rise_long__02,bounded_rise_long,2,1,3000000,1199.06,1786.61,0
+bounded_rise_long__03,bounded_rise_long,3,1,3000000,1199.08,1343.105,0
+bounded_rise_long__04,bounded_rise_long,4,1,3000000,1199.076,1333.505,0

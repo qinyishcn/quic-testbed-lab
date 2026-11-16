@@ -4,11 +4,13 @@ import argparse
 from pathlib import Path
 from statistics import median
 
-from mismatch_report import (BOUNDED_LABELS, BOUNDED_SPANS, ROOT, csv_write, figure, load, plt,
-                             plot_pair, quantile, set_chinese_font, style, tables)
+from mismatch_report import (BOUNDED_LABELS, BOUNDED_SPANS, CAP, CHANGE, OUT, PACE, ROOT, csv_write,
+                             figure, load, plt, plot_pair, quantile, samples, set_chinese_font, step,
+                             style, tables, windows)
 
 
 COHORT = "pacing-mismatch-reverse"
+LONG_RISE = "bounded_rise_long"
 MODES = ("bbr1-gate-reverse", "bbr3-gate-reverse")
 CASES = tuple(BOUNDED_LABELS)
 COLORS = ("#3a5c81", "#398079", "#ac4848", "#997223")
@@ -86,6 +88,60 @@ def plot_outcomes(tasks, confirmations, out):
     figure(out, "delivery-and-ack", fig)
 
 
+def plot_long_rise(runs, out):
+    """Compare 2 ms observations at the step with 50 ms means during sustained demand."""
+    fig, axes = plt.subplots(3, 2, figsize=(13, 9.3), sharey="row", layout="constrained")
+    fig.suptitle("3 MB 连续上传｜升速初期的失配与随后空口容量的利用", fontsize=16, fontweight="bold")
+    early = list(range(0, 81, 2))
+    coarse = list(range(0, 801, 50))
+    late = list(range(550, 601, 2))
+    groups = [(0, 8), (0, 100), (100, 500), (500, 800)]
+    table = []
+    for j, mode in enumerate(MODES):
+        detail, overview, zoom = axes[:, j]
+        for ax in axes[:, j]:
+            ax.axhline(30, color=CAP, lw=1.4, ls="--", label="空口容量（30 Mbps）")
+        by_window = {a: [] for a in coarse[:-1]}
+        for (tag, run), (raw, wire, rows) in sorted(runs.items()):
+            if tag != mode:
+                continue
+            job = rows["tasks"][0]
+            completed = float(job["start_ms"]) + float(job["upload_ms"]) - CHANGE
+            if completed < coarse[-1]:
+                raise ValueError("Upload finished before the comparison window ended")
+            if run.endswith("__00"):
+                pacing = samples(raw, "pacing_bps", 1e6)
+                for ax, edges in ((detail, early), (zoom, late)):
+                    step(ax, pacing, edges[0], edges[-1], color=PACE, lw=1.5, label="目标发包速率")
+                    rates = [sum(n for t, n in wire["egress"] if a <= t < b) * .008 / (b - a)
+                             for a, b in zip(edges, edges[1:])]
+                    ax.stairs(rates, edges, baseline=None, color=OUT, lw=1.1, label="实际出队速率（2 ms）")
+            for a, b in [*groups, *zip(coarse, coarse[1:])]:
+                values = windows(raw, wire, a, b)
+                table.append(dict(mode=mode, run=run, start_ms=a, end_ms=b, upload_finished_ms=completed,
+                                  capacity_mbps=30, capacity_used_pct=100 * values["egress_mbps"] / 30,
+                                  **values))
+                if b-a == 50:
+                    by_window[a].append(values["egress_mbps"])
+            overview.stairs([v[-1] for v in by_window.values()], coarse, baseline=None,
+                            color="#91a1a8", alpha=.55, lw=.9)
+        overview.stairs([median(v) for v in by_window.values()], coarse, baseline=None,
+                        color=OUT, lw=2.1, label="实际出队速率（五轮中位数）")
+        overview.axvspan(500, 800, color=OUT, alpha=.09, label="后段统计区间")
+        overview.axvspan(late[0], late[-1], color=OUT, alpha=.13)
+        style(detail, f"BBRv{mode[3]}｜初期 80 ms，第一轮", "速率（Mbps）" if j == 0 else "")
+        style(overview, f"BBRv{mode[3]}｜每 50 ms 平均值，灰线为逐轮", "速率（Mbps）" if j == 0 else "")
+        style(zoom, f"BBRv{mode[3]}｜放大 550–600 ms，第一轮", "速率（Mbps）" if j == 0 else "")
+        for ax, bounds in zip((detail, overview, zoom), (early, coarse, late)):
+            ax.set_xlim(bounds[0], bounds[-1])
+            ax.set_ylim(bottom=0)
+            ax.set_xlabel("距空口从 20 Mbps 升至 30 Mbps 的时间（ms）")
+    for ax in axes[:2, 0]:
+        ax.legend(loc="lower right", fontsize=8, framealpha=.95)
+    csv_write(out / "scale-windows.csv", table)
+    figure(out, "sustained-rise", fig)
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--data", type=Path, default=ROOT / "results")
@@ -97,10 +153,13 @@ def main():
     tables(runs, out, BOUNDED_SPANS)
     tasks, confirmations = timing_tables(runs, out)
     plot_outcomes(tasks, confirmations, out)
-    plot_pair(runs, "bounded_rise", (-4, 48), out, modes=MODES,
-              caption="双向随机时延条件下的升速响应｜20 Mbps 升至 30 Mbps", bin_ms=2)
+    plot_pair(runs, "bounded_rise", (-4, 120), out, modes=MODES, mark_upload=True,
+              caption="双向随机时延条件下的升速响应｜200 kB 上传全过程", bin_ms=2)
     plot_pair(runs, "bounded_dip", (-4, 164), out, modes=MODES,
               caption="双向随机时延条件下的降速与回升｜20 Mbps 降至 10 Mbps", bin_ms=4)
+    long_cohort = f"{COHORT}/sustained"
+    long_runs = load(args.data, {long_cohort: (LONG_RISE,)}, MODES)
+    plot_long_rise(long_runs, out)
 
 
 if __name__ == "__main__":
