@@ -24,17 +24,28 @@ CHANGE_US = 1_200_000
 RECOVERY_US = 1_330_000
 DURATION_US = 2_000_000
 GATE = {"probability": .1, "wait_us": 5000}
+BOUNDED_CAPACITY = {
+    "bounded_fixed": [(0, 20)],
+    "bounded_rise": [(0, 20), (CHANGE_US, 30)],
+    "bounded_dip": [(0, 20), (CHANGE_US, 10), (1_300_000, 15),
+                    (1_320_000, 20), (1_340_000, 30)],
+    "bounded_narrow": [(0, 20), (CHANGE_US, 16), (1_300_000, 20), (1_320_000, 24)],
+}
 
 
 def plan_for(case, repeat, gate):
-    before, low, after = CASES[case]
-    recovery = RECOVERY_US + {"staged": 150_000, "rebound": 230_000}.get(case, 0)
-    capacity = [(0, before), (CHANGE_US, low)]
-    if case == "staged":
-        capacity.append((RECOVERY_US, 1))
-    if case == "rebound":
-        capacity.append((RECOVERY_US, 4))
-    capacity.append((recovery, after))
+    if case in BOUNDED_CAPACITY:
+        capacity = BOUNDED_CAPACITY[case]
+        recovery = 1_340_000
+    else:
+        before, low, after = CASES[case]
+        recovery = RECOVERY_US + {"staged": 150_000, "rebound": 230_000}.get(case, 0)
+        capacity = [(0, before), (CHANGE_US, low)]
+        if case == "staged":
+            capacity.append((RECOVERY_US, 1))
+        if case == "rebound":
+            capacity.append((RECOVERY_US, 4))
+        capacity.append((recovery, after))
     return dict(case=case, repeat=repeat, seed=61700 + repeat, duration=DURATION_US,
                 tasks=[dict(t=200_000, size=300_000, warmup=True),
                        dict(t=CHANGE_US - 1_000, size=200_000, warmup=False),
@@ -50,7 +61,7 @@ def main():
     parser.add_argument("--bbr3", type=Path, required=True)
     parser.add_argument("--out", type=Path, required=True)
     parser.add_argument("--repeats", type=int, default=3)
-    parser.add_argument("--only", nargs="+", choices=CASES, default=list(CASES))
+    parser.add_argument("--only", nargs="+", choices=CASES | BOUNDED_CAPACITY, default=list(CASES))
     args = parser.parse_args()
     if os.geteuid() or args.repeats < 1 or len(args.only) != len(set(args.only)):
         parser.error("requires root, positive repeats and distinct cases")

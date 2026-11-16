@@ -22,6 +22,17 @@ from matplotlib.lines import Line2D
 
 MODES = ("bbr1-rate", "bbr1-gate", "bbr3-rate", "bbr3-gate")
 SETS = {"initial": ("rise", "drop", "collapse"), "staged": ("staged",), "rebound": ("rebound",)}
+BOUNDED_LABELS = {"bounded_fixed": "恒定 20 Mbps", "bounded_rise": "升至 30 Mbps",
+                  "bounded_dip": "降至 10 Mbps 后回升", "bounded_narrow": "降至 16 Mbps 后回升"}
+SPANS = {"rise": [(0, 8)], "drop": [(0, 12), (132, 137)], "collapse": [(0, 12), (132, 137)],
+         "staged": [(0, 12), (282, 287)],
+         "rebound": [(0, 12), (250, 300), (340, 360), (362, 367), (367, 375)]}
+BOUNDED_SPANS = {
+    "bounded_fixed": [(0, 4), (0, 8), (0, 12), (0, 50)],
+    "bounded_rise": [(0, 4), (0, 8), (8, 20)],
+    "bounded_dip": [(0, 12), (0, 50), (50, 100), (120, 140), (140, 150)],
+    "bounded_narrow": [(0, 12), (0, 50), (120, 128)],
+}
 CAP, PACE, OUT, WINDOW, FLIGHT, QUEUE, LOSS = "#3a424d", "#18768d", "#428853", "#76469b", "#7c899a", "#995921", "#ae3d46"
 CHANGE = 1200
 
@@ -143,9 +154,9 @@ def windows(raw, wire, left, right):
                 queue_empty_pct=100*sum(b-a for a, b, n in zip(t, t[1:], q) if not n)/(right-left))
 
 
-def load(source):
+def load(source, cohorts=SETS):
     runs, pairs = {}, {}
-    for cohort, cases in SETS.items():
+    for cohort, cases in cohorts.items():
         for mode in MODES:
             folder = source / cohort / mode
             by_run = defaultdict(lambda: defaultdict(list))
@@ -164,7 +175,7 @@ def load(source):
     return runs
 
 
-def tables(runs, out):
+def tables(runs, out, spans=SPANS):
     stats, events, time_windows = [], [], []
     for (mode, run), (raw, wire, rows) in sorted(runs.items()):
         tasks = {int(r["task"]): r for r in rows["tasks"]}
@@ -190,8 +201,6 @@ def tables(runs, out):
                     "age_at_loss_ms", "deadline_age_ms", "repeat_packet_numbers", "first_repeat_send_ms", "first_repeat_receive_ms",
                     "relay_ingress_ms", "relay_egress_ms", "ack_gap_at_loss")
             events.append(dict(mode=mode, run=run, **{k: r[k] for k in keys}))
-        spans = {"rise": [(0, 8)], "drop": [(0, 12), (132, 137)], "collapse": [(0, 12), (132, 137)],
-                 "staged": [(0, 12), (282, 287)], "rebound": [(0, 12), (250, 300), (340, 360), (362, 367), (367, 375)]}
         for a, b in spans[raw["plan.json"]["case"]]:
             sent = sum(int(r["stream_bytes"])-int(r["repeated_stream_bytes"]) for r in packets
                        if r["stream_ids"] == "4" and float(r["send_ms"])-CHANGE < b)
@@ -203,18 +212,21 @@ def tables(runs, out):
     return stats
 
 
-def plot_pair(runs, case, bounds, out, suffix=""):
+def plot_pair(runs, case, bounds, out, suffix="", *, modes=("bbr3-rate", "bbr3-gate"),
+              caption=None, bin_ms=None):
     fig, axes = plt.subplots(4, 2, figsize=(13.4, 9), sharex="col", layout="constrained")
     title = "容量突升时的供给不足" if case == "rise" else "速率深跌、探测超时与容量回升"
-    fig.suptitle(title + ("后的毫秒放大" if suffix else ""), fontsize=16, fontweight="bold")
-    for j, mode in enumerate(("bbr3-rate", "bbr3-gate")):
+    fig.suptitle(caption or title + ("后的毫秒放大" if suffix else ""), fontsize=16, fontweight="bold")
+    show_pto = case not in BOUNDED_LABELS
+    show_ack_loss = show_pto
+    for j, mode in enumerate(modes):
         raw, wire, rows = runs[mode, case+"__00"]
         rate, control, queue, delay = axes[:, j]
         left, right = bounds
         capacity = [(t/1000-CHANGE, value) for t, value in raw["plan.json"]["capacity"]]
         step(rate, capacity, left, right, color=CAP, lw=1.8, ls="--", label="配置容量")
         step(rate, samples(raw, "pacing_bps", 1e6), left, right, color=PACE, lw=1.7, label="目标发包速率")
-        size = 1 if suffix else (2 if case == "rise" else 5)
+        size = bin_ms or (1 if suffix else (2 if case == "rise" else 5))
         bins = dict.fromkeys(range(left, right, size), 0)
         for t, n in wire["egress"]:
             if left <= t < right:
@@ -222,9 +234,15 @@ def plot_pair(runs, case, bounds, out, suffix=""):
         flow = [(t, n*.008/size) for t, n in bins.items()]
         rate.step([t for t, _ in flow]+[right], [y for _, y in flow]+[flow[-1][1]], where="post",
                   color=OUT, lw=1.1, label=f"实际出队（每 {size} ms）")
-        rate.set_yscale("symlog", linthresh=1)
-        rate.set_yticks([0, 1, 10, 90, 300], ["0", "1", "10", "90", "300"])
-        rate.set_ylim(0, 450)
+        if case not in BOUNDED_LABELS:
+            rate.set_yscale("symlog", linthresh=1)
+            rate.set_yticks([0, 1, 10, 90, 300], ["0", "1", "10", "90", "300"])
+            rate.set_ylim(0, 450)
+        elif case == "bounded_rise":
+            # Keep the 20–30 Mbps step legible beside BBRv1's high pacing target.
+            rate.set_yscale("symlog", linthresh=40, linscale=1.5)
+            ticks = [0, 10, 20, 30, 40, 100, 300]
+            rate.set_yticks(ticks, [str(value) for value in ticks])
         step(control, samples(raw, "cwnd", 1000), left, right, color=WINDOW, lw=1.6, label="拥塞窗口")
         step(control, samples(raw, "inflight", 1000), left, right, color=FLIGHT, lw=1.1, label="实际在途量")
         step(queue, [(t, b/1000) for t, b in wire["queue"]], left, right, color=QUEUE, lw=1.5)
@@ -237,6 +255,7 @@ def plot_pair(runs, case, bounds, out, suffix=""):
             delay.scatter(t, y, s=7, color=PACE, alpha=.62)
             e = lookup.get(r["packet_number"])
             if e and e["loss_reason"] == "timer":
+                show_pto = True
                 deadline = float(e["deadline_age_ms"])
                 ack = float(e["confirmation_ms"])
                 delay.scatter(t, deadline, color=LOSS, marker="^", s=38, zorder=4)
@@ -247,41 +266,51 @@ def plot_pair(runs, case, bounds, out, suffix=""):
                     for ax in (rate, control, queue):
                         ax.axvline(at, color=LOSS, lw=.85, ls=":", alpha=.8)
             elif e:
+                show_ack_loss = True
                 delay.scatter(t, y, s=18, color=LOSS, marker="x")
         for t, _ in capacity[1:]:
             for ax in axes[:, j]:
                 if left <= t <= right:
                     ax.axvline(t, color=CAP, alpha=.55, lw=.8, ls="--")
-        title = "BBRv3｜仅速率" if not j else "BBRv3｜另加逐包随机等待"
+        kind = "仅速率" if mode.endswith("-rate") else "另加逐包随机等待"
+        title = f"BBRv{mode[3]}｜{kind}"
         for ax, label in zip(axes[:, j], ("速率（Mbps）", "数据量（kB）", "等待服务的队列（kB）", "时延或期限（ms）")):
             style(ax, title if ax is rate else "", label if j == 0 else "")
             ax.set_xlim(left, right)
         delay.set_xlabel("距首次容量变化的时间（ms）")
     axes[0, 0].legend(loc="upper left", fontsize=8, framealpha=.94)
     axes[1, 0].legend(loc="upper left", fontsize=8, framealpha=.94)
+    if not show_pto:
+        axes[-1, 0].set_ylabel("前向单向时延（ms）")
+    symbols = [(PACE, "o", "None", "前向单向时延", PACE)]
+    if show_pto:
+        symbols.extend(((LOSS, "^", "None", "探测超时门限", LOSS),
+                        (LOSS, "D", "None", "原包确认往返耗时", "none"),
+                        (LOSS, "x", "None", "其他判丢的原包", LOSS),
+                        (LOSS, "None", ":", "发送端触发探测超时", LOSS)))
+    elif show_ack_loss:
+        symbols.append((LOSS, "x", "None", "包号或时间阈值判丢的原包", LOSS))
     handles = [Line2D([], [], color=color, marker=marker, ls=ls, label=label, markerfacecolor=fill)
-               for color, marker, ls, label, fill in (
-                   (PACE, "o", "None", "前向单向时延", PACE),
-                   (LOSS, "^", "None", "探测超时门限", LOSS),
-                   (LOSS, "D", "None", "原包确认往返耗时", "none"),
-                   (LOSS, "x", "None", "其他判丢的原包", LOSS),
-                   (LOSS, "None", ":", "发送端触发探测超时", LOSS))]
+               for color, marker, ls, label, fill in symbols]
     fig.legend(handles=handles, loc="outside lower center", ncol=5, fontsize=9, frameon=False)
-    for ax1, ax2 in axes[1:]:
+    for ax1, ax2 in (axes if case in BOUNDED_LABELS else axes[1:]):
         high = max(ax1.get_ylim()[1], ax2.get_ylim()[1])
         ax1.set_ylim(0, high)
         ax2.set_ylim(0, high)
     figure(out, f"{case}-trace{suffix}", fig)
 
 
-def comparison(stats, out):
+def comparison(stats, out, case_labels=None):
     fig, axes = plt.subplots(2, 2, figsize=(13.2, 6.5), layout="constrained")
     fig.suptitle("容量时序和逐包随机等待怎样改变交付结果", fontsize=16, fontweight="bold")
     labels = ["直接升速", "2 Mbps 后回升", "0.12 Mbps 后回升", "经 1 Mbps 回升", "经 4 Mbps 回升"]
     cases = [case for values in SETS.values() for case in values]
+    if case_labels:
+        cases, labels = zip(*case_labels.items())
     columns = ("upload_200kb_ms", "forward_p99_ms", "pto", "packet_threshold")
     titles = ("200 kB 完整上传耗时", "前向单包时延第 99 百分位数", "探测超时事件", "包号阈值判丢事件")
     names = ("BBRv1 仅速率", "BBRv1 加随机等待", "BBRv3 仅速率", "BBRv3 加随机等待")
+    repeats = sum(r["case"] == cases[0] and r["mode"] == MODES[0] for r in stats)
     for i, (ax, field, title) in enumerate(zip(axes.flat, columns, titles)):
         for j, (mode, name) in enumerate(zip(MODES, names)):
             values = [[float(r[field]) for r in stats if r["case"] == case and r["mode"] == mode] for case in cases]
@@ -289,7 +318,11 @@ def comparison(stats, out):
             ax.bar([k+(j-1.5)*.18 for k in range(len(cases))], height, width=.17,
                    color=("#8794a4", "#4e5968", "#60a2b1", "#1b6176")[j], label=name)
         ax.set_xticks(range(len(cases)), labels, fontsize=9)
-        style(ax, title, "耗时（ms）" if i < 2 else "三轮累计事件数")
+        style(ax, title, "耗时（ms）" if i < 2 else f"{repeats} 轮累计事件数")
+        if i >= 2 and all(bar.get_height() == 0 for bar in ax.patches):
+            ax.set_ylim(0, 1)
+            ax.set_yticks([0, 1])
+            ax.text(.5, .5, "所有条件均为 0 次", transform=ax.transAxes, ha="center", va="center")
     handles, labels = axes[0, 0].get_legend_handles_labels()
     fig.legend(handles, labels, loc="outside lower center", ncol=4, frameon=False)
     figure(out, "outcomes", fig)
@@ -299,8 +332,19 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--font", type=Path)
     parser.add_argument("--data", type=Path, default=ROOT / "results/pacing-mismatch")
+    parser.add_argument("--bounded", action="store_true", help="Analyze the bounded-capacity trials")
     args = parser.parse_args()
     set_chinese_font(args.font)
+    if args.bounded:
+        out = args.data / "bounded"
+        runs = load(args.data, {"bounded": tuple(BOUNDED_LABELS)})
+        stats = tables(runs, out, BOUNDED_SPANS)
+        plot_pair(runs, "bounded_rise", (-4, 28), out, modes=("bbr1-rate", "bbr3-rate"),
+                  caption="仅改变容量｜从 20 Mbps 升到 30 Mbps", bin_ms=2)
+        plot_pair(runs, "bounded_dip", (-4, 120), out,
+                  caption="从 20 Mbps 降到 10 Mbps｜逐包随机等待对照", bin_ms=4)
+        comparison(stats, out, BOUNDED_LABELS)
+        return
     runs = load(args.data)
     stats = tables(runs, args.data)
     plot_pair(runs, "rise", (-4, 50), args.data)
