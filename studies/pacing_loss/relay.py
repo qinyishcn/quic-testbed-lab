@@ -38,8 +38,12 @@ def main(work, origin, duration):
             raise ValueError("Rate-only plans require positive rates and no delay or loss interventions")
     rng = random.Random(plan["seed"])
     gate = plan.get("gate")
+    reverse_delay = plan.get("reverse_delay")
+    if reverse_delay:
+        reverse_rng = random.Random(reverse_delay["seed"])
     client, server = port("10.206.0.1"), port("10.207.0.1")
     queue, sequence = [], 0
+    forward_queued = 0
     held = []
     service_end = {"forward": 0, "reverse": 0}
     fifo_end = dict(service_end)
@@ -51,12 +55,14 @@ def main(work, origin, duration):
         log.writerow(("event", "us", "direction", "id", "udp_bytes", "sha256", "due_us", "action"))
 
         def admit(now, ident, payload, digest):
-            if len(queue) >= plan["buffer_packets"]:
+            nonlocal forward_queued
+            if forward_queued >= plan["buffer_packets"]:
                 log.writerow(("drop", now, "forward", ident, len(payload), digest, 0, "buffer_full"))
                 return
             due = service_finish(bounds, rates, max(now, service_end["forward"]), (len(payload)+28)*8)
             service_end["forward"] = due
             heapq.heappush(queue, (due, ident, "forward", payload, digest, "rate_fifo"))
+            forward_queued += 1
             log.writerow(("admit", now, "forward", ident, len(payload), digest, round(due), "rate_fifo"))
 
         def check_gate(now, ident, payload, digest):
@@ -70,6 +76,8 @@ def main(work, origin, duration):
         while (now := time.monotonic_ns()//1000) < end:
             while queue and queue[0][0] <= now:
                 due, ident, direction, payload, digest, action = heapq.heappop(queue)
+                if rate_only and direction == "forward":
+                    forward_queued -= 1
                 target, address = (server, SERVER) if direction == "forward" else (client, CLIENT)
                 target.sendto(payload, address)
                 log.writerow(("out", now, direction, ident, len(payload), digest, round(due), action))
@@ -96,6 +104,11 @@ def main(work, origin, duration):
                     digest = hashlib.sha256(payload).hexdigest()
                     if rate_only:
                         if direction == "reverse":
+                            if reverse_delay:
+                                due = now + reverse_rng.randint(reverse_delay["min_us"], reverse_delay["max_us"])
+                                heapq.heappush(queue, (due, sequence, direction, payload, digest, "uniform_delay"))
+                                log.writerow(("in", now, direction, sequence, len(payload), digest, due, "uniform_delay"))
+                                continue
                             client.sendto(payload, CLIENT)
                             sent = time.monotonic_ns()//1000
                             log.writerow(("in", now, direction, sequence, len(payload), digest, now, "direct"))
@@ -106,12 +119,13 @@ def main(work, origin, duration):
                             check_gate(now, sequence, payload, digest)
                         else:
                             # Preserve the format consumed by the earlier rate-only study.
-                            if len(queue) >= plan["buffer_packets"]:
+                            if forward_queued >= plan["buffer_packets"]:
                                 log.writerow(("drop", now, direction, sequence, len(payload), digest, 0, "buffer_full"))
                                 continue
                             due = service_finish(bounds, rates, max(now, service_end[direction]), (len(payload)+28)*8)
                             service_end[direction] = due
                             heapq.heappush(queue, (due, sequence, direction, payload, digest, "rate_fifo"))
+                            forward_queued += 1
                             log.writerow(("in", now, direction, sequence, len(payload), digest, round(due), "rate_fifo"))
                         continue
                     # Rate is an IP service budget. 1 bit/us equals 1 Mbps.

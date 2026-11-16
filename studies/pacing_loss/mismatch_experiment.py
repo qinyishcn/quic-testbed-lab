@@ -1,4 +1,4 @@
-"""Replay the same capacity steps with and without per-packet retry waits."""
+"""Replay capacity steps with optional forward retry waits and reverse delay."""
 
 import argparse
 import json
@@ -62,9 +62,17 @@ def main():
     parser.add_argument("--out", type=Path, required=True)
     parser.add_argument("--repeats", type=int, default=3)
     parser.add_argument("--only", nargs="+", choices=CASES | BOUNDED_CAPACITY, default=list(CASES))
+    parser.add_argument("--reverse-delay-ms", type=int, nargs=2, metavar=("MIN", "MAX"),
+                        help="Run only the forward-gate groups, with independent uniform reverse delay")
     args = parser.parse_args()
     if os.geteuid() or args.repeats < 1 or len(args.only) != len(set(args.only)):
         parser.error("requires root, positive repeats and distinct cases")
+    reverse_delay = None
+    if args.reverse_delay_ms:
+        lower, upper = args.reverse_delay_ms
+        if not 0 <= lower <= upper:
+            parser.error("reverse delay bounds must be nonnegative and in order")
+        reverse_delay = dict(min_us=lower * 1000, max_us=upper * 1000)
     testbed = args.testbed.resolve()
     hashes = testbed_components(testbed)
     sys.path[:0] = [str(testbed / "netemu/src"), str(testbed / "aitestbed")]
@@ -79,9 +87,11 @@ def main():
         qdiscs = {row["dev"]: row["kind"] for row in qdisc if row["dev"] in ("r0", "r1")}
         if qdiscs != {"r0": "noqueue", "r1": "noqueue"}:
             raise RuntimeError(f"Unexpected router queue discipline: {qdiscs}")
-        variants = [(v, gate) for v in endpoints for gate in (False, True)]
+        variants = [(v, gate) for v in endpoints for gate in ((True,) if reverse_delay else (False, True))]
         for version, gate in variants:
             mode = f"{version}-{'gate' if gate else 'rate'}"
+            if reverse_delay:
+                mode += "-reverse"
             out = target / mode
             prepare(out, "profiles: {}\n")
             logger = TrafficLogger(str(out / "traffic.sqlite"))
@@ -90,14 +100,18 @@ def main():
                  kernel=os.uname().release, router_qdiscs=qdiscs, endpoint_hash=sha(endpoints[version]),
                  runner_hash=sha(Path(__file__)), relay_hash=sha(Path(__file__).with_name("relay.py")),
                  cases=args.only, repeats=args.repeats, measured_tasks_per_run=2, mode=mode,
-                 added_delay_us=0, reverse="direct", gate=GATE if gate else None))
+                 added_delay_us=0, reverse=reverse_delay or "direct", gate=GATE if gate else None))
         for repeat in range(args.repeats):
             for case in args.only:
                 for version, gate in (variants if repeat % 2 == 0 else reversed(variants)):
                     mode = f"{version}-{'gate' if gate else 'rate'}"
+                    plan = plan_for(case, repeat, gate)
+                    if reverse_delay:
+                        mode += "-reverse"
+                        plan["reverse_delay"] = dict(reverse_delay, seed=plan["seed"] + 1_000_000)
                     print(f"{mode} {case} {repeat}", flush=True)
                     run = argparse.Namespace(out=target / mode, endpoint=endpoints[version])
-                    run_case(run, namespaces, case, repeat, None, loggers[version, gate], plan_for(case, repeat, gate))
+                    run_case(run, namespaces, case, repeat, None, loggers[version, gate], plan)
 
 
 if __name__ == "__main__":

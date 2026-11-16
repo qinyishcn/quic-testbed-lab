@@ -62,15 +62,27 @@ def wire_state(raw):
     origin = plan["origin"]
     incoming, admitted, sent = {}, {}, {}
     reverse_in, reverse_out = {}, {}
+    reverse_plan = plan.get("reverse_delay")
+    reverse_rng = random.Random(reverse_plan["seed"]) if reverse_plan else None
     waits = Counter()
     next_check = {}
     rng = random.Random(plan["seed"])
     for r in raw["wire.csv"]:
         ident, event, now = r["id"], r["event"], int(r["us"])
         if r["direction"] == "reverse":
-            if r["action"] != "direct":
-                raise ValueError("Reverse path was shaped")
-            (reverse_in if event == "in" else reverse_out)[ident] = now
+            action = "uniform_delay" if reverse_plan else "direct"
+            due = int(r["due_us"])
+            if r["action"] != action:
+                raise ValueError("Unexpected reverse-path action")
+            if event == "in":
+                delay = reverse_rng.randint(reverse_plan["min_us"], reverse_plan["max_us"]) if reverse_plan else 0
+                if due != now + delay:
+                    raise ValueError("Reverse delay differs from the seeded draw")
+                reverse_in[ident] = (now, due)
+            elif event == "out" and reverse_in[ident][1] == due and due <= now:
+                reverse_out[ident] = now
+            else:
+                raise ValueError("Invalid reverse-packet release")
             continue
         if event == "in":
             incoming[ident] = now
@@ -95,6 +107,9 @@ def wire_state(raw):
         raise ValueError("Relay log does not conserve packets")
     if list(admitted) != list(sent):
         raise ValueError("Service queue released packets out of admission order")
+    expected_reverse_order = sorted(reverse_in, key=lambda ident: (reverse_in[ident][1], int(ident)))
+    if list(reverse_out) != expected_reverse_order:
+        raise ValueError("Reverse packets were not released in deadline order")
     backlog = 0
     changes = []
     egress = []
@@ -121,7 +136,9 @@ def wire_state(raw):
     return dict(queue=queue, egress=egress, ingress=ingress, wait_counts=Counter(waits.get(i, 0) for i in incoming),
                 reverse_count=len(reverse_in), queue_wait_max_ms=max(queue_wait),
                 max_release_lag_ms=max((sent[i]-admitted[i][1])/1000 for i in sent),
-                reverse_relay_p99_us=quantile([reverse_out[i]-reverse_in[i] for i in reverse_in], .99))
+                reverse_relay_p99_us=quantile([reverse_out[i]-reverse_in[i][0] for i in reverse_in], .99),
+                reverse_releases=[(int(i), reverse_in[i][1]-reverse_in[i][0],
+                                   reverse_out[i]-reverse_in[i][0]) for i in reverse_out])
 
 
 def range_points(points, left, right):
@@ -154,10 +171,10 @@ def windows(raw, wire, left, right):
                 queue_empty_pct=100*sum(b-a for a, b, n in zip(t, t[1:], q) if not n)/(right-left))
 
 
-def load(source, cohorts=SETS):
+def load(source, cohorts=SETS, modes=MODES):
     runs, pairs = {}, {}
     for cohort, cases in cohorts.items():
-        for mode in MODES:
+        for mode in modes:
             folder = source / cohort / mode
             by_run = defaultdict(lambda: defaultdict(list))
             for name, file in (("packets", "packets.csv.gz"), ("loss", "loss-events.csv"), ("tasks", "tasks.csv")):
@@ -168,7 +185,7 @@ def load(source, cohorts=SETS):
                 plan = raw["plan.json"]
                 if plan["case"] not in cases:
                     raise ValueError("Unexpected experiment in archive")
-                pair = (plan["capacity"], plan["tasks"], plan["seed"])
+                pair = (plan["capacity"], plan["tasks"], plan["seed"], plan.get("reverse_delay"))
                 if pairs.setdefault(run, pair) != pair:
                     raise ValueError(f"Unpaired plans for {run}")
                 runs[mode, run] = raw, wire_state(raw), by_run[run]
@@ -238,7 +255,7 @@ def plot_pair(runs, case, bounds, out, suffix="", *, modes=("bbr3-rate", "bbr3-g
             rate.set_yscale("symlog", linthresh=1)
             rate.set_yticks([0, 1, 10, 90, 300], ["0", "1", "10", "90", "300"])
             rate.set_ylim(0, 450)
-        elif case == "bounded_rise":
+        elif case == "bounded_rise" and not mode.endswith("-reverse"):
             # Keep the 20–30 Mbps step legible beside BBRv1's high pacing target.
             rate.set_yscale("symlog", linthresh=40, linscale=1.5)
             ticks = [0, 10, 20, 30, 40, 100, 300]
@@ -257,10 +274,11 @@ def plot_pair(runs, case, bounds, out, suffix="", *, modes=("bbr3-rate", "bbr3-g
             if e and e["loss_reason"] == "timer":
                 show_pto = True
                 deadline = float(e["deadline_age_ms"])
-                ack = float(e["confirmation_ms"])
                 delay.scatter(t, deadline, color=LOSS, marker="^", s=38, zorder=4)
-                delay.scatter(t, ack, facecolors="none", edgecolors=LOSS, marker="D", s=30, zorder=4)
-                delay.vlines(t, deadline, ack, color=LOSS, lw=.9)
+                if e["confirmation_ms"]:
+                    ack = float(e["confirmation_ms"])
+                    delay.scatter(t, ack, facecolors="none", edgecolors=LOSS, marker="D", s=30, zorder=4)
+                    delay.vlines(t, deadline, ack, color=LOSS, lw=.9)
                 at = float(e["loss_ms"])-CHANGE
                 if left <= at <= right:
                     for ax in (rate, control, queue):
@@ -272,7 +290,10 @@ def plot_pair(runs, case, bounds, out, suffix="", *, modes=("bbr3-rate", "bbr3-g
             for ax in axes[:, j]:
                 if left <= t <= right:
                     ax.axvline(t, color=CAP, alpha=.55, lw=.8, ls="--")
-        kind = "仅速率" if mode.endswith("-rate") else "另加逐包随机等待"
+        if mode.endswith("-reverse"):
+            kind = "上行随机等待＋回程随机时延"
+        else:
+            kind = "仅速率" if mode.endswith("-rate") else "另加逐包随机等待"
         title = f"BBRv{mode[3]}｜{kind}"
         for ax, label in zip(axes[:, j], ("速率（Mbps）", "数据量（kB）", "等待服务的队列（kB）", "时延或期限（ms）")):
             style(ax, title if ax is rate else "", label if j == 0 else "")

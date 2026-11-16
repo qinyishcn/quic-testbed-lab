@@ -131,9 +131,12 @@ def analyze_direction(work, plan, role, pcap_delays):
     sent = {(packet_key(data)):(when, data) for when,name,data in events if name == "packet_sent"}
     peer_sent = {packet_key(data):when for when,name,data in receiver if name == "packet_sent"}
     received = defaultdict(list)
+    missing_keys = defaultdict(list)
     for when,name,data in receiver:
         if name == "packet_received":
             received[packet_key(data)].append(when)
+        elif plan.get("reverse_delay") and name == "packet_dropped" and data.get("trigger") == "aead not ready":
+            missing_keys[data.get("packet_type")].append(when)
     acknowledgements = acknowledgement_times(events, sent)
     metadata = defaultdict(list)
     send_observations = read_csv(work / (role+"-sent.csv"))
@@ -203,7 +206,14 @@ def analyze_direction(work, plan, role, pcap_delays):
         if row["actual_relay_drop"] and arrival is not None:
             raise ValueError("relay drop unexpectedly reached receiver")
         if (row["pcap_one_way_ms"] is None) != (arrival is None):
-            raise ValueError(f"qlog and NIC capture disagree on packet arrival: {work.name}/{role}/{key}")
+            # Reordered handshake datagrams may arrive after their decryption keys have been discarded.
+            rejected = (role == "server" and key[0] in ("initial", "handshake") and not frames
+                        and arrival is None and row["pcap_one_way_ms"] is not None and relay_out)
+            matches = [t for t in missing_keys[key[0]] if rejected and 0 <= t-int(relay_out["us"]) <= 2_000]
+            if len(matches) != 1:
+                raise ValueError(f"qlog and NIC capture disagree on packet arrival: {work.name}/{role}/{key}")
+            missing_keys[key[0]].remove(matches[0])
+            row["qlog_outcome"] = "handshake_missing_keys"
         if ack and not (arrival is not None and arrival <= ack_send <= ack[0]):
             raise ValueError("invalid order for receive, ACK send and ACK arrival")
         rows.append(row)
@@ -347,6 +357,8 @@ def main():
     if len(tasks) != len(expected)*environment["measured_tasks_per_run"]:
         raise ValueError("task denominator differs from plan")
     columns = list(packets[0])
+    if isinstance(environment.get("reverse"), dict) and "qlog_outcome" not in columns:
+        columns.append("qlog_outcome")
     with gzip.open(args.out / "packets.csv.gz","wt",newline="",encoding="utf-8") as handle:
         writer = csv.DictWriter(handle,fieldnames=columns,lineterminator="\n")
         writer.writeheader()
@@ -364,6 +376,9 @@ def main():
     validation.update(pcap_qlog_delay_absdiff_p50_ms=quantile(errors,.5),
                       pcap_qlog_delay_absdiff_p99_ms=quantile(errors,.99),
                       pcap_qlog_delay_absdiff_max_ms=max(errors))
+    if isinstance(environment.get("reverse"), dict):
+        validation["capture_only_handshake_packets"] = sum(
+            r.get("qlog_outcome") == "handshake_missing_keys" for r in packets)
     if args.archive:
         validation["archive_members"] = archive(args.raw,args.out / "raw-evidence.tar.xz")
     (args.out / "validation.json").write_text(json.dumps(validation,indent=2)+"\n")
