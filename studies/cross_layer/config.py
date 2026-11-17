@@ -10,10 +10,14 @@ TAIL_BACKHAUL = {
     "random-tight": (6, 18, 40_000),
     "random-middle": (8, 20, 40_000),
     "random-tight-fast": (6, 18, 20_000),
+    "random-tight-100ms": (6, 18, 100_000),
+    "random-tight-200ms": (6, 18, 200_000),
 }
 START = 1_100_000
 COUNT = 64
 DURATION = 3_850_000
+LONG_TRAIN_COUNT = 192
+LONG_TRAIN_DURATION = 10_000_000
 SLOW = (1_650_000, 2_510_000)
 REVERSE_STEP = (1_850_000, 2_640_000, 15_000)
 FORWARD_STEP = (*SLOW, 15_000)

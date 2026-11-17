@@ -66,3 +66,5 @@ done
 默认读取 [公开的 CDF 测试归档](../../results/cross-layer-random-cdf)，直接重算逐请求时间、上传时延 CDF 图、上传及回复的分位数和按运行轮次重抽样的区间。`tasks.csv` 的 `upload_ms` 以服务器收齐全部数据为终点，`e2e_ms` 以终端收到回复为终点。`p99-summary.csv` 同时包含 P90、P95、P99 及这些位置相对理想排程的剩余降幅。
 
 敏感性补测使用同一组命令，将 `--profiles` 换成 `random-middle random-tight-fast`，将原始数据与分析输出分别写入新的目录。已发布的补测见 [P90/P95 对照归档](../../results/cross-layer-percentile-sensitivity)。
+
+较慢的回传波动测试使用 `--profiles random-tight-100ms random-tight-200ms --long-train`。每轮正式提交 192 笔请求，提交跨度 6.303 s，观察至实验起点后 10 s。抓包校验和绘图命令与上面相同，将 `--data` 指向本组的分析输出目录即可。[100 ms 与 200 ms 长时序归档](../../results/cross-layer-slow-backhaul)

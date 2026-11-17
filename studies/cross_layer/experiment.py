@@ -13,33 +13,33 @@ sys.path.insert(0, str(ROOT))
 from bbr3.experiment import PIN, LabeledLogger, prepare, testbed_components
 from run import TESTBED_COMMIT, dump, output, sha, topology
 from studies.cross_layer.config import (
-    COUNT, DURATION, FORWARD_STEP, MODES, PROFILES, REVERSE_STEP, REVISION_MODES,
+    COUNT, DURATION, FORWARD_STEP, LONG_TRAIN_COUNT, LONG_TRAIN_DURATION, MODES, PROFILES, REVERSE_STEP, REVISION_MODES,
     REVISION_PROFILES, SLOW, START, TAIL_BACKHAUL,
 )
 from studies.pacing_loss.experiment import run_case
 from studies.pacing_loss.mismatch_experiment import SERVER_CREDIT
 
-def correlated_rates(seed, minimum, maximum, period, correlation):
+def correlated_rates(seed, minimum, maximum, period, correlation, duration):
     rng = random.Random(seed)
     z = rng.gauss(0, 1)
     innovation = math.sqrt(1-correlation**2)
     center = (minimum+maximum)/2
     span = (maximum-minimum)/2
-    for t in range(900_000, DURATION, period):
+    for t in range(900_000, duration, period):
         yield t, center+span*math.erf(z/math.sqrt(2))
         z = correlation*z+innovation*rng.gauss(0, 1)
 
 
-def plan_for(profile, mode, repeat, revision=False):
+def plan_for(profile, mode, repeat, revision=False, *, count=COUNT, duration=DURATION):
     seed = 69811 + repeat
     radio = [(0, 20)]
     if profile in ("radio", "mixed", "mixed-clean", "mixed-feasible") or profile in TAIL_BACKHAUL:
         if revision:
-            radio.extend(correlated_rates(seed+200_000, 10, 30, 5000, .65))
+            radio.extend(correlated_rates(seed+200_000, 10, 30, 5000, .65, duration))
         else:
             rng = random.Random(seed+200_000)
             t = 900_000
-            while t < DURATION:
+            while t < duration:
                 hold = rng.randint(5000, 9000)
                 radio.extend(((t, 30), (t+hold, 10)))
                 t += 2*hold
@@ -47,10 +47,10 @@ def plan_for(profile, mode, repeat, revision=False):
     if profile in ("backhaul", "mixed", "mixed-clean", "mixed-feasible"):
         backhaul.extend(((SLOW[0], 12 if profile == "mixed-feasible" else 7.5), (SLOW[1], 45)))
     elif profile in TAIL_BACKHAUL:
-        backhaul.extend(correlated_rates(seed+300_000, *TAIL_BACKHAUL[profile], .70))
+        backhaul.extend(correlated_rates(seed+300_000, *TAIL_BACKHAUL[profile], .70, duration))
     tasks = [dict(t=230_000, size=300_000, warmup=True)]
-    tasks.extend(dict(t=START + i*33_000, size=40_000, warmup=False) for i in range(COUNT))
-    plan = dict(case=profile, controller=mode, repeat=repeat, seed=seed, duration=DURATION, tasks=tasks,
+    tasks.extend(dict(t=START + i*33_000, size=40_000, warmup=False) for i in range(count))
+    plan = dict(case=profile, controller=mode, repeat=repeat, seed=seed, duration=duration, tasks=tasks,
                 capacity=radio, radio=radio, backhaul=backhaul, impairments=[],
                 gate=None if profile == "mixed-clean" else {"probability": .1, "wait_us": 5000},
                 reverse_delay={"min_us": 10000, "max_us": 20000, "seed": seed+1_000_000},
@@ -69,12 +69,14 @@ def main():
     parser.add_argument("--profiles", nargs="+", choices=set((*PROFILES, *REVISION_PROFILES, *TAIL_BACKHAUL)))
     parser.add_argument("--modes", nargs="+", choices=(*MODES, "bbr_radio"))
     parser.add_argument("--repeats", type=int, default=3)
+    parser.add_argument("--long-train", action="store_true", help="192 requests over 6.3 seconds per run")
     args = parser.parse_args()
     profiles = REVISION_PROFILES if args.revision else PROFILES
     available = (*profiles, *TAIL_BACKHAUL) if args.revision else profiles
     modes = REVISION_MODES if args.revision else MODES
     args.profiles = args.profiles or profiles
     args.modes = args.modes or modes
+    count, duration = (LONG_TRAIN_COUNT, LONG_TRAIN_DURATION) if args.long_train else (COUNT, DURATION)
     if (os.geteuid() or args.repeats < 1 or len(set(args.profiles)) != len(args.profiles)
             or len(set(args.modes)) != len(args.modes) or not set(args.profiles) <= set(available)
             or not set(args.modes) <= set(modes)):
@@ -100,7 +102,7 @@ def main():
             dump(out / "environment.json", dict(testbed=TESTBED_COMMIT, picoquic=PIN,
                  testbed_hashes=hashes, kernel=os.uname().release, router_qdiscs=qdiscs,
                  endpoint_hash=sha(endpoint), runner_hash=sha(Path(__file__)), relay_hash=sha(relay),
-                 cases=args.profiles, repeats=args.repeats, measured_tasks_per_run=COUNT,
+                 cases=args.profiles, repeats=args.repeats, measured_tasks_per_run=count, duration_us=duration,
                  mode=mode, reverse={"min_us": 10000, "max_us": 20000}, forward_propagation_us=4000))
         for repeat in range(args.repeats):
             for index, case in enumerate(args.profiles):
@@ -109,7 +111,7 @@ def main():
                     run = argparse.Namespace(out=target / mode, endpoint=endpoint, relay=relay)
                     print(f"{mode} {case} {repeat}", flush=True)
                     run_case(run, names, case, repeat, None, loggers[mode],
-                             plan_for(case, mode, repeat, args.revision))
+                             plan_for(case, mode, repeat, args.revision, count=count, duration=duration))
 
 
 if __name__ == "__main__":

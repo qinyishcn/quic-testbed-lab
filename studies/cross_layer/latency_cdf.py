@@ -15,7 +15,7 @@ ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT))
 from analyze import csv_write
 from studies.cross_layer.analyze import tasks_for
-from studies.cross_layer.config import COUNT, TAIL_BACKHAUL
+from studies.cross_layer.config import TAIL_BACKHAUL
 from studies.cross_layer.latency_reference import reference_tasks
 from v3.plots import figure, plt, set_chinese_font, style
 
@@ -28,6 +28,8 @@ PROFILES = {
     "random-tight": "回传 6–18 Mbps",
     "random-middle": "回传 8–20 Mbps，每 40 ms 更新",
     "random-tight-fast": "回传 6–18 Mbps，每 20 ms 更新",
+    "random-tight-100ms": "回传 6–18 Mbps，每 100 ms 更新",
+    "random-tight-200ms": "回传 6–18 Mbps，每 200 ms 更新",
 }
 METRICS = ("upload_ms", "e2e_ms")
 TAIL_MARKS = (.90, .95, .99)
@@ -51,7 +53,9 @@ def collect(folder):
     for mode in MEASURED:
         runs = read_runs(folder / mode / "raw-evidence.tar.xz")
         meta = json.loads((folder / mode / "validation.json").read_text())
-        if not meta["all_qlog_arrivals_match_capture"] or meta["runs"] != len(runs):
+        expected = meta["tasks"]
+        if (not meta["all_qlog_arrivals_match_capture"] or meta["runs"] != len(runs)
+                or sum(len(t["plan"]["tasks"])-1 for t in runs.values()) != expected):
             raise ValueError(f"Packet verification failed for {mode}")
         if mode != "bbr" and runs.keys() != paired.keys():
             raise ValueError("Measured controllers must use the same paired runs")
@@ -89,15 +93,17 @@ def summarise(tasks):
         runs = sorted({row["repeat"] for row in groups[profile, "bbr"]})
         if not runs:
             raise ValueError(f"No completed requests for {profile}")
+        count = len(groups[profile, "bbr"])//len(runs)
+        expected = [(run, task) for run in runs for task in range(1, count+1)]
         ordered = {}
         for mode in MODES:
             rows = sorted(groups[profile, mode], key=lambda r: (r["repeat"], r["task"]))
-            if [(r["repeat"], r["task"]) for r in rows] != [(run, task) for run in runs for task in range(1, COUNT+1)]:
+            if [(r["repeat"], r["task"]) for r in rows] != expected:
                 raise ValueError(f"Unpaired requests or missing completions in {profile}/{mode}")
             ordered[mode] = rows
         draws = rng.integers(len(runs), size=(2000, len(runs)))
         for metric in METRICS:
-            values = {m: np.array([r[metric] for r in ordered[m]]).reshape(len(runs), COUNT) for m in MODES}
+            values = {m: np.array([r[metric] for r in ordered[m]]).reshape(len(runs), count) for m in MODES}
             resampled = {m: v[draws].reshape(len(draws), -1) for m, v in values.items()}
             tails = {m: ecdf_quantile(v, .99) for m, v in resampled.items()}
             ideal_percentiles = {p: ecdf_quantile(values["ideal"].ravel(), p) for p in TAIL_MARKS}
