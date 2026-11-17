@@ -112,7 +112,7 @@ def run_case(args, namespaces, case, repeat, emulator, logger, plan=None):
         if "0 packets dropped by kernel" not in (work / (role+".capture.txt")).read_text():
             raise RuntimeError("capture lost packets")
     logger.log(LogRecord(timestamp=time.time(), scenario_id="packet_delay_loss_study",
-        session_id=work.name, turn_index=0, network_profile=case, provider="picoquic-bbr1",
+        session_id=work.name, turn_index=0, network_profile=case, provider=plan.get("provider", "picoquic-bbr1"),
         model="fixed-bytes", request_bytes=sum(task["size"] for task in plan["tasks"] if not task["warmup"]),
         success=True))
     print(work.name, flush=True)

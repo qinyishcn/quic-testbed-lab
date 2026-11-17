@@ -96,7 +96,7 @@ def loss_decisions(work, role):
             else:
                 reason = "other"
             observation["reason"] = reason
-            declared[(row["send_us"], row["packet_number"])] = observation
+            declared[(row["pc"], row["send_us"], row["packet_number"])] = observation
     return declared
 
 
@@ -163,7 +163,10 @@ def analyze_direction(work, plan, role, pcap_delays):
         arrival = min(received[key]) if received[key] else None
         ack = acknowledgements.get(key)
         ack_send = peer_sent[ack[2]] if ack else None
-        loss = declarations.get((when,key[1]))
+        # Coalesced packets can share both a send timestamp and a number in
+        # different QUIC packet-number spaces.
+        pc = {"initial": 2, "handshake": 1}.get(key[0], 0)
+        loss = declarations.get((pc,when,key[1]))
         if bool(loss) != (key in qlog_losses):
             raise ValueError(f"native declaration and qlog disagree: {work.name}/{role}/{key}")
         measured = any(0 < stream//4 < len(plan["tasks"]) for stream,_,_ in frames)
@@ -207,7 +210,7 @@ def analyze_direction(work, plan, role, pcap_delays):
             raise ValueError("relay drop unexpectedly reached receiver")
         if (row["pcap_one_way_ms"] is None) != (arrival is None):
             # Reordered handshake datagrams may arrive after their decryption keys have been discarded.
-            rejected = (role == "server" and key[0] in ("initial", "handshake") and not frames
+            rejected = (key[0] in ("initial", "handshake") and not frames
                         and arrival is None and row["pcap_one_way_ms"] is not None and relay_out)
             matches = [t for t in missing_keys[key[0]] if rejected and 0 <= t-int(relay_out["us"]) <= 2_000]
             if len(matches) != 1:

@@ -1,0 +1,5 @@
+{
+  "forward_datagrams": 32075,
+  "waited_at_least_once": 3175,
+  "waited_at_least_twice": 323
+}
