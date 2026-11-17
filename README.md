@@ -2,7 +2,7 @@
 
 **GBR-CC 论文复现**：[作者 MsQuic 端点、授权反馈与双环对照](REPORT.gbr-cc-reproduction.zh-CN.md) · [构建与复现](studies/gbr_cc/README.md)
 
-**空口与回传双环对照**：[BBRv3、仅空口环、仅回传慢环和双环的 40 kB 请求实验](REPORT.cross-layer-loops.zh-CN.md) · [复现与原始数据](studies/cross_layer/README.md)
+**空口与回传双环对照**：[原生 BBRv3、仅空口快环、BBRv3 加空口快环的 40 kB 请求实验](REPORT.cross-layer-loops.zh-CN.md) · [复现与原始数据](studies/cross_layer/README.md)
 
 **BBRv3 独立复测**：[A1–D1、逐包判丢和在线 MiniCPM 对照](REPORT.bbr3.zh-CN.md) · [BBRv3 构建与复现](bbr3/README.md) · [分组对照结果](results/bbr3/burst-comparison.csv)
 

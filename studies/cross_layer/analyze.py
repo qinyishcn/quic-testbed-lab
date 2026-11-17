@@ -15,18 +15,24 @@ from statistics import mean, median
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT))
 from analyze import csv_write, quantile
-from studies.cross_layer.config import MODES, PROFILES, REVERSE_STEP, SLOW, START
+from studies.cross_layer.config import MODES, PROFILES, REVERSE_STEP, REVISION_MODES, REVISION_PROFILES, SLOW, START
 
 TABLES = ("segments.csv", "wire.csv", "applied.csv", "feedback.csv",
           "client.csv", "server.csv", "samples.csv")
-CONTROLS = {"bbr": (), "outer": (1,), "radio": (0,), "dual": (0, 1)}
-NAMES = {"bbr": "原生 BBRv3", "outer": "仅慢环", "radio": "仅空口环", "dual": "双环"}
+CONTROLS = {"bbr": (), "outer": (1,), "radio": (0,), "dual": (0, 1), "bbr_radio": (0,)}
+NAMES = {"bbr": "原生 BBRv3", "outer": "仅慢环", "radio": "仅空口快环", "dual": "双环",
+         "bbr_radio": "BBRv3 加空口快环"}
 LABELS = {"steady": "恒速", "radio": "空口快变", "backhaul": "回传慢变",
           "mixed": "快慢叠加·过载", "mixed-clean": "过载·关闭重试等待",
-          "mixed-feasible": "快慢叠加·可承载", "ack": "仅回程时延增加"}
+          "mixed-feasible": "快慢叠加·可承载", "ack": "仅回程时延增加",
+          "forward-delay": "仅上行回传时延增加"}
 LINK_STATS = ("retry_ms_p95", "radio_wait_ms_p95", "backhaul_wait_ms_p95",
               "active_pace_median_mbps", "air_pace_mae_mbps", "sender_unsent_p95_kB",
-              "packet_ack_ms_p50", "packet_ack_ms_p95")
+              "packet_ack_ms_p50", "packet_ack_ms_p95", "bbr_outer_median_mbps", "radio_cap_binding_pct")
+
+
+def phase_bounds(profile):
+    return REVERSE_STEP[:2] if profile == "ack" else SLOW
 
 
 def read(path):
@@ -95,8 +101,11 @@ def stage_records(raw):
         a, b = stages["radio"][i], stages["backhaul"][i]
         t0, t1, t2 = int(entered[i]["us"]), int(a["us"]), int(b["us"])
         sa, sb = int(a["start_us"]), int(b["start_us"])
+        finish = exits["backhaul"][i]
+        step = plan.get("forward_step")
+        forward_delay = 4000 + (step[2] if step and step[0] <= finish-plan["origin"] < step[1] else 0)
         if (t1-t0 < 5000*waits[i] or not t1 <= sa <= exits["radio"][i] == t2 <= sb <= exits["backhaul"][i]
-                or int(released[i]["us"]) < exits["backhaul"][i]+4000):
+                or int(released[i]["due_us"]) != finish+forward_delay):
             raise ValueError("Invalid chronology across forwarding stages")
         result.append((t0-plan["origin"], (t1-t0)/1000, (sa-t1)/1000, (sb-t2)/1000))
     return result
@@ -119,7 +128,9 @@ def feedback_records(raw, mode):
                         rates[1] if 1 in CONTROLS[mode] else 3750000)
         delay = int(mark["ready_us"])-int(mark["sample_us"])
         if (delay != (1000 if kind == 0 else 20000) or int(mark["sent_us"]) < int(mark["ready_us"])
-                or int(r["reported_Bps"]) != rates[kind] or int(r["effective_Bps"]) != effective):
+                or int(r["reported_Bps"]) != rates[kind]
+                or (int(r["effective_Bps"]) > rates[kind] if mode == "bbr_radio"
+                    else int(r["effective_Bps"]) != effective)):
             raise ValueError("Endpoint pacing does not match causal control input")
         counts[kind] += 1
     if set(counts) != set(CONTROLS[mode]):
@@ -137,7 +148,7 @@ def tasks_for(raw, mode, name):
     token = event_times("client.csv", "token")
     if not start.keys() == upload.keys() == token.keys() or len(start) != len(plan["tasks"])-1:
         raise ValueError(f"Unfinished or missing task {mode}/{name}")
-    a, b = REVERSE_STEP[:2] if plan["case"] == "ack" else SLOW
+    a, b = phase_bounds(plan["case"])
     result = []
     for job, t in start.items():
         if not t <= upload[job] <= token[job]:
@@ -169,7 +180,12 @@ def pacing_state(raw, tasks, packets):
             if backlog < 0:
                 raise ValueError("Send log moved ahead of submitted bytes")
             t, delta = next(events, (float("inf"), 0))
-        samples.append((sample, int(s["pacing_bps"])/1e6, int(s["cwnd"]), int(s["inflight"]), backlog))
+        pace = int(s["pacing_bps"])
+        outer = int(s.get("bbr_target_Bps", 0))*8
+        fast = int(s.get("radio_cap_Bps", 0))*8
+        if raw["plan"]["controller"] == "bbr_radio" and (not outer or abs(pace-min(outer, fast)) > 8):
+            raise ValueError("Hybrid pacing differs from the lower of BBRv3 and radio targets")
+        samples.append((sample, pace/1e6, int(s["cwnd"]), int(s["inflight"]), outer/1e6, fast/1e6, backlog))
     if t != float("inf") or backlog:
         raise ValueError("Sender did not transmit all requested byte ranges")
     return samples
@@ -200,6 +216,9 @@ def summary_row(key, tasks, segments, states, confirmations, plan):
     out["sender_unsent_p95_kB"] = quantile([s[-1]/1000 for s in states], .95)
     out["packet_ack_ms_p50"] = quantile(confirmations, .5)
     out["packet_ack_ms_p95"] = quantile(confirmations, .95)
+    hybrid = [s for s in active if s[4] > 0]
+    out["bbr_outer_median_mbps"] = quantile([s[4] for s in hybrid], .5)
+    out["radio_cap_binding_pct"] = 100*sum(s[5] < s[4] for s in hybrid)/len(hybrid) if hybrid else None
     return out
 
 
@@ -213,22 +232,26 @@ def series(raw, states, profile, mode):
     queue_index = {k: [r[0] for r in v] for k, v in queues.items()}
     for t in range(START, 3_350_000, 2000):
         at = max(0, bisect_right(sample_index, t)-1)
-        _, rate, cwnd, inflight, pending = states[at]
+        _, rate, cwnd, inflight, outer, fast, pending = states[at]
         depth = {k: v[max(0, bisect_right(queue_index[k], t)-1)][1] for k, v in queues.items()}
         yield dict(profile=profile, mode=mode, repeat=0, ms=t/1000, pacing_mbps=rate,
-                   cwnd_kB=cwnd/1000, inflight_kB=inflight/1000, pending_kB=pending/1000,
+                   cwnd_kB=cwnd/1000, inflight_kB=inflight/1000, bbr_outer_mbps=outer,
+                   radio_cap_mbps=fast, pending_kB=pending/1000,
                    radio_kB=depth["radio"], backhaul_kB=depth["backhaul"],
                    radio_mbps=capacity(raw["plan"]["radio"], t), backhaul_mbps=capacity(raw["plan"]["backhaul"], t))
 
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--data", type=Path, default=ROOT / "results/cross-layer-loops")
+    parser.add_argument("--revision", action="store_true")
+    parser.add_argument("--data", type=Path)
     args = parser.parse_args()
-    folder = args.data
+    folder = args.data or ROOT / "results" / ("cross-layer-bbr-radio" if args.revision else "cross-layer-loops")
+    modes = REVISION_MODES if args.revision else MODES
+    profiles = REVISION_PROFILES if args.revision else PROFILES
     all_tasks, metrics, curves = [], [], []
     paired = {}
-    for mode in MODES:
+    for mode in modes:
         raw = archives(folder / mode)
         by_run, losses = defaultdict(list), defaultdict(Counter)
         for p in read(folder / mode / "packets.csv.gz"):
@@ -240,7 +263,8 @@ def main():
         for name, trace in sorted(raw.items()):
             plan = trace["plan"]
             profile = plan["case"]
-            inputs = tuple(plan[k] for k in ("radio", "backhaul", "reverse_delay", "reverse_step", "tasks", "gate", "seed"))
+            inputs = tuple(plan.get(k) for k in
+                           ("radio", "backhaul", "reverse_delay", "reverse_step", "forward_step", "tasks", "gate", "seed"))
             if inputs != paired.setdefault(name, inputs):
                 raise ValueError("Controller groups use different exogenous profiles")
             trial_tasks = tasks_for(trace, mode, name)
@@ -251,7 +275,7 @@ def main():
             fast, slow = feedback_records(trace, mode)
             if plan["repeat"] == 0:
                 curves.extend(series(trace, states, profile, mode))
-            a, b = REVERSE_STEP[:2] if profile == "ack" else SLOW
+            a, b = phase_bounds(profile)
             phases = {"pre": (START, a), "stress": (a, b), "post": (b, 3_210_000)}
             for phase, (lo, hi) in phases.items():
                 key = dict(profile=profile, mode=mode, run=name, repeat=plan["repeat"], phase=phase)
@@ -265,15 +289,16 @@ def main():
                                 packet_threshold=losses[name]["packet_number"], time_threshold=losses[name]["rack_time"],
                                 pto=losses[name]["timer"], radio_feedback_applied=fast, slow_feedback_applied=slow))
     aggregates = []
-    for profile in PROFILES:
-        for mode in MODES:
+    for profile in profiles:
+        for mode in modes:
             for phase in ("all", "pre", "stress", "post"):
                 group = [r for r in metrics if (r["profile"], r["mode"], r["phase"]) == (profile, mode, phase)]
                 tasks = [t for t in all_tasks if t["profile"] == profile and t["mode"] == mode
                          and (phase == "all" or t["phase"] == phase)]
                 row = task_metrics(dict(profile=profile, mode=mode, phase=phase, runs=len(group)), tasks)
                 for stat in LINK_STATS:
-                    row[stat] = median(r[stat] for r in group if r[stat] is not None)
+                    available = [r[stat] for r in group if r[stat] is not None]
+                    row[stat] = median(available) if available else None
                 aggregates.append(row)
     csv_write(folder / "summary.csv", aggregates)
     csv_write(folder / "runs.csv", metrics)

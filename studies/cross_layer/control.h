@@ -8,8 +8,10 @@ typedef struct {
 } link_feedback_t;
 
 static int feedback_fd = -1;
-static int radio_enabled, outer_enabled;
+static int radio_enabled, outer_enabled, hybrid_enabled;
 static uint64_t link_rate[2] = { 2500000, 3750000 };
+static double bbr_target;
+static uint64_t bbr_quantum;
 static FILE *applied;
 
 static void study_cc_init(picoquic_path_t *path, const char *options, uint64_t now)
@@ -53,7 +55,8 @@ static int setup_feedback(void)
     fclose(config);
     if (parsed != 1) return -1;
     if (!strcmp(mode, "bbr")) return 0;
-    radio_enabled = !strcmp(mode, "radio") || !strcmp(mode, "dual");
+    hybrid_enabled = !strcmp(mode, "bbr_radio");
+    radio_enabled = hybrid_enabled || !strcmp(mode, "radio") || !strcmp(mode, "dual");
     outer_enabled = !strcmp(mode, "outer") || !strcmp(mode, "dual");
     if (!radio_enabled && !outer_enabled) return -1;
     struct sockaddr_un address = {.sun_family = AF_UNIX, .sun_path = "feedback.sock"};
@@ -68,8 +71,27 @@ static int setup_feedback(void)
 static uint64_t study_rate(void)
 {
     uint64_t fast = radio_enabled ? link_rate[0] : 2500000;
+    if (hybrid_enabled)
+        return bbr_target > 0 && bbr_target < fast ? (uint64_t)bbr_target : fast;
     uint64_t slow = outer_enabled ? link_rate[1] : 3750000;
     return fast < slow ? fast : slow;
+}
+
+void study_bbr_pacing(picoquic_path_t *path, double rate, uint64_t quantum)
+{
+    if (hybrid_enabled) {
+        bbr_target = rate;
+        bbr_quantum = quantum;
+        rate = rate < link_rate[0] ? rate : link_rate[0];
+    }
+    picoquic_update_pacing_rate(path, rate, quantum);
+}
+
+void study_bbr_window_pacing(picoquic_path_t *path, int slow_start)
+{
+    picoquic_update_pacing_data(path, slow_start);
+    if (hybrid_enabled)
+        study_bbr_pacing(path, path->pacing.rate, path->pacing.quantum_max);
 }
 
 static void apply_feedback(picoquic_path_t *path, uint64_t now)
@@ -85,5 +107,6 @@ static void apply_feedback(picoquic_path_t *path, uint64_t now)
     }
     uint64_t target = study_rate();
     if (target != path->pacing.rate)
-        picoquic_update_pacing_rate(path, (double)target, 2 * path->send_mtu);
+        picoquic_update_pacing_rate(path, (double)target,
+            hybrid_enabled && bbr_quantum ? bbr_quantum : 2 * path->send_mtu);
 }

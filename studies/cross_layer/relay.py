@@ -78,12 +78,14 @@ def main(work, origin, duration):
     gate = plan["gate"]
     reverse = plan["reverse_delay"]
     reverse_step = plan.get("reverse_step")
+    forward_step = plan.get("forward_step")
     waits, delivery, feedback = [], [], []
     seq = 0
     end = origin + duration + 100_000
     periods, travel = (1000, 20_000), (1000, 20_000)
     next_sample = [origin+200_000, origin+200_000]
-    enabled = {"bbr": (), "radio": (0,), "outer": (1,), "dual": (0, 1)}[plan["controller"]]
+    enabled = {"bbr": (), "radio": (0,), "outer": (1,), "dual": (0, 1),
+               "bbr_radio": (0,)}[plan["controller"]]
     with (port("10.206.0.1") as client, port("10.207.0.1") as server,
           socket.socket(socket.AF_UNIX, socket.SOCK_DGRAM | socket.SOCK_NONBLOCK) as ipc,
           open("wire.csv", "w", newline="") as wf, open("segments.csv", "w", newline="") as sf,
@@ -109,7 +111,10 @@ def main(work, origin, duration):
             for packet in links[0].release(now):
                 links[1].put(now, packet)
             for packet in links[1].release(now):
-                heapq.heappush(delivery, (now + 4000, packet, False))
+                delay = 4000
+                if forward_step and forward_step[0] <= now-origin < forward_step[1]:
+                    delay += forward_step[2]
+                heapq.heappush(delivery, (now + delay, packet, False))
             while waits and waits[0][0] <= now:
                 _, packet = heapq.heappop(waits)
                 admit(now, packet)
