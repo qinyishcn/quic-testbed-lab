@@ -47,7 +47,7 @@ def plan_for(profile, mode, repeat, revision=False):
     if profile in ("backhaul", "mixed", "mixed-clean", "mixed-feasible"):
         backhaul.extend(((SLOW[0], 12 if profile == "mixed-feasible" else 7.5), (SLOW[1], 45)))
     elif profile in TAIL_BACKHAUL:
-        backhaul.extend(correlated_rates(seed+300_000, *TAIL_BACKHAUL[profile], 40_000, .70))
+        backhaul.extend(correlated_rates(seed+300_000, *TAIL_BACKHAUL[profile], .70))
     tasks = [dict(t=230_000, size=300_000, warmup=True)]
     tasks.extend(dict(t=START + i*33_000, size=40_000, warmup=False) for i in range(COUNT))
     plan = dict(case=profile, controller=mode, repeat=repeat, seed=seed, duration=DURATION, tasks=tasks,

@@ -23,8 +23,14 @@ MEASURED = ("bbr", "radio")
 MODES = (*MEASURED, "ideal")
 LABELS = {"bbr": "原生 BBRv3", "radio": "仅空口快环", "ideal": "理想排程"}
 COLORS = {"bbr": "#465771", "radio": "#943f63", "ideal": "#087b70"}
-PROFILES = {"random-headroom": "回传 14–26 Mbps", "random-tight": "回传 6–18 Mbps"}
+PROFILES = {
+    "random-headroom": "回传 14–26 Mbps",
+    "random-tight": "回传 6–18 Mbps",
+    "random-middle": "回传 8–20 Mbps，每 40 ms 更新",
+    "random-tight-fast": "回传 6–18 Mbps，每 20 ms 更新",
+}
 METRICS = ("upload_ms", "e2e_ms")
+TAIL_MARKS = (.90, .95, .99)
 
 
 def read_runs(path):
@@ -78,7 +84,8 @@ def summarise(tasks):
         groups[row["profile"], row["mode"]].append(row)
     results, uploads = [], {}
     rng = np.random.default_rng(69811)
-    for profile in PROFILES:
+    available = {profile for profile, _ in groups}
+    for profile in (p for p in PROFILES if p in available):
         runs = sorted({row["repeat"] for row in groups[profile, "bbr"]})
         if not runs:
             raise ValueError(f"No completed requests for {profile}")
@@ -91,26 +98,42 @@ def summarise(tasks):
         draws = rng.integers(len(runs), size=(2000, len(runs)))
         for metric in METRICS:
             values = {m: np.array([r[metric] for r in ordered[m]]).reshape(len(runs), COUNT) for m in MODES}
-            tails = {m: ecdf_quantile(v[draws].reshape(len(draws), -1), .99) for m, v in values.items()}
-            p99_ref = ecdf_quantile(values["ideal"].ravel(), .99)
+            resampled = {m: v[draws].reshape(len(draws), -1) for m, v in values.items()}
+            tails = {m: ecdf_quantile(v, .99) for m, v in resampled.items()}
+            ideal_percentiles = {p: ecdf_quantile(values["ideal"].ravel(), p) for p in TAIL_MARKS}
+            ideal_bootstrap = {p: tails["ideal"] if p == .99 else ecdf_quantile(resampled["ideal"], p)
+                               for p in TAIL_MARKS}
             for mode in MODES:
                 flat = values[mode].ravel()
                 p99 = ecdf_quantile(flat, .99)
                 lo, hi = np.quantile(tails[mode], [.025, .975])
                 gap_lo, gap_hi = np.quantile(tails[mode]-tails["ideal"], [.025, .975])
-                results.append(dict(profile=profile, metric=metric, mode=mode, runs=len(runs), tasks=flat.size,
-                                    p50_ms=ecdf_quantile(flat, .5), p95_ms=ecdf_quantile(flat, .95), p99_ms=p99,
-                                    p99_lo_ms=lo, p99_hi_ms=hi, max_ms=max(flat),
-                                    p99_gap_to_ideal_ms=p99-p99_ref, gap_lo_ms=gap_lo, gap_hi_ms=gap_hi))
+                row = dict(profile=profile, metric=metric, mode=mode, runs=len(runs), tasks=flat.size,
+                           p50_ms=ecdf_quantile(flat, .5), p90_ms=ecdf_quantile(flat, .9),
+                           p95_ms=ecdf_quantile(flat, .95), p99_ms=p99, p99_lo_ms=lo, p99_hi_ms=hi,
+                           max_ms=max(flat), p99_gap_to_ideal_ms=p99-ideal_percentiles[.99],
+                           gap_lo_ms=gap_lo, gap_hi_ms=gap_hi)
+                for p in TAIL_MARKS:
+                    key = f"p{round(100*p)}"
+                    observed = row[f"{key}_ms"]
+                    bootstrap = tails[mode] if p == .99 else ecdf_quantile(resampled[mode], p)
+                    pct = 100*(bootstrap-ideal_bootstrap[p])/bootstrap
+                    low, high = np.quantile(pct, [.025, .975])
+                    row[f"{key}_gap_to_ideal_pct"] = 100*(observed-ideal_percentiles[p])/observed
+                    row[f"{key}_gap_pct_lo"] = low
+                    row[f"{key}_gap_pct_hi"] = high
+                results.append(row)
                 if metric == "upload_ms":
                     uploads[profile, mode] = np.sort(flat)
     return results, uploads
 
 
 def plot(folder, uploads):
-    fig, axes = plt.subplots(2, 2, figsize=(12.8, 8), layout="constrained")
+    profiles = [(p, label) for p, label in PROFILES.items() if (p, "bbr") in uploads]
+    fig, axes = plt.subplots(len(profiles), 2, figsize=(12.8, 4*len(profiles)),
+                             squeeze=False, layout="constrained")
     fig.suptitle("空口与回传随机波动时，完整 40 kB 上传时延分布", fontsize=16, fontweight="bold")
-    for (profile, label), (full, tail) in zip(PROFILES.items(), axes):
+    for (profile, label), (full, tail) in zip(profiles, axes):
         data = [uploads[profile, mode] for mode in MODES]
         left = .95*min(v[0] for v in data)
         right = 1.025*max(v[-1] for v in data)
@@ -119,14 +142,16 @@ def plot(folder, uploads):
             y = np.r_[0, 100*np.arange(1, len(v)+1)/len(v), 100]
             for panel in (full, tail):
                 panel.step(x, y, where="post", color=COLORS[mode], lw=1.65, label=LABELS[mode])
-            tail.scatter(ecdf_quantile(v, .99), 99, color=COLORS[mode], s=29, zorder=5,
-                         edgecolor="white", linewidth=.35)
+            tail.scatter([ecdf_quantile(v, p) for p in TAIL_MARKS], [100*p for p in TAIL_MARKS],
+                         color=COLORS[mode], s=29, zorder=5, edgecolor="white", linewidth=.35)
         style(full, f"{label} · 全分布", "累计完成比例（%）")
         style(tail, f"{label} · 尾部放大", "累计完成比例（%）")
         full.set(xlim=(left, right), ylim=(0, 101))
-        tail.set(xlim=(.95*min(ecdf_quantile(v, .95) for v in data), right), ylim=(95, 100.15),
-                 yticks=[95, 96, 97, 98, 99, 100])
-        tail.axhline(99, ls="--", lw=.8, color="#525b63", label="99%")
+        tail.set(xlim=(.95*min(ecdf_quantile(v, .90) for v in data), right), ylim=(89.5, 100.15),
+                 yticks=[90, 92, 94, 95, 96, 98, 99, 100])
+        for i, p in enumerate(TAIL_MARKS):
+            tail.axhline(100*p, ls="--", lw=.75, color="#525b63",
+                         label="90%、95%、99%" if i == 0 else None)
         for panel in (full, tail):
             panel.set_xlabel("从提交到服务器收齐 40 kB（ms）")
     handles, labels = axes[0, 1].get_legend_handles_labels()

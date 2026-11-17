@@ -4,7 +4,13 @@ PROFILES = ("steady", "radio", "backhaul", "mixed", "mixed-clean", "mixed-feasib
 MODES = ("bbr", "outer", "radio", "dual")
 REVISION_MODES = ("bbr", "radio", "bbr_radio")
 REVISION_PROFILES = (*PROFILES[:-1], "forward-delay")
-TAIL_BACKHAUL = {"random-headroom": (14, 26), "random-tight": (6, 18)}
+# Minimum and maximum Mbps, followed by the interval between samples in us.
+TAIL_BACKHAUL = {
+    "random-headroom": (14, 26, 40_000),
+    "random-tight": (6, 18, 40_000),
+    "random-middle": (8, 20, 40_000),
+    "random-tight-fast": (6, 18, 20_000),
+}
 START = 1_100_000
 COUNT = 64
 DURATION = 3_850_000
