@@ -245,14 +245,26 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--revision", action="store_true")
     parser.add_argument("--data", type=Path)
+    parser.add_argument("--profiles", nargs="+", choices=tuple(dict.fromkeys((*PROFILES, *REVISION_PROFILES))))
     args = parser.parse_args()
     folder = args.data or ROOT / "results" / ("cross-layer-bbr-radio" if args.revision else "cross-layer-loops")
     modes = REVISION_MODES if args.revision else MODES
     profiles = REVISION_PROFILES if args.revision else PROFILES
+    if args.profiles:
+        if not set(args.profiles) <= set(profiles) or len(set(args.profiles)) != len(args.profiles):
+            parser.error("profiles must be distinct and available for the selected experiment")
+        profiles = args.profiles
     all_tasks, metrics, curves = [], [], []
     paired = {}
+    run_names = None
     for mode in modes:
         raw = archives(folder / mode)
+        if {trace["plan"]["case"] for trace in raw.values()} != set(profiles):
+            raise ValueError(f"Archive for {mode} does not match the requested profiles")
+        if run_names is None:
+            run_names = set(raw)
+        elif set(raw) != run_names:
+            raise ValueError(f"Archive for {mode} does not have the same paired runs")
         by_run, losses = defaultdict(list), defaultdict(Counter)
         for p in read(folder / mode / "packets.csv.gz"):
             if p["direction"] == "forward" and p["measured"] == "1":

@@ -30,3 +30,21 @@ done
 - 每个控制方案另有逐包 `packets.csv.gz`、`loss-events.csv`、端点和依赖版本的 `environment.json` 以及验证结果 `validation.json`。逐包记录里的确认耗时从发送端发出数据报开始，计到发送端收到能确认该数据报的 ACK。判丢事件包括发送端因包号或时限作出的判定。中继完整转发与协议层判丢是两个独立事件。
 
 在发布数据中，所有实测请求都收到回复。交叉检查逐包日志、双端抓包、计划和中继记录确认，各上行数据报按顺序经过两段服务，保持同一数据报内容。每组有 14 个在抓包可见但未纳入 QUIC 日志匹配的握手数据报。抓包统计显示内核无丢包。
+
+## 随机等待复测与理想排程参照
+
+沿用上面构建的端点，选取空口快变、回传可承载、回传过载、回传过载且关闭随机等待四组。实际 QUIC 复测和理想排程的已发布数据都在 [cross-layer-latency-floor](../../results/cross-layer-latency-floor)。
+
+```bash
+sudo "$PY" studies/cross_layer/experiment.py --revision --testbed "$TESTBED" \
+  --endpoint "$WORK/endpoint/endpoint" --out "$WORK/floor-raw" --repeats 3 \
+  --profiles radio mixed mixed-clean mixed-feasible
+for mode in bbr radio bbr_radio; do
+  "$PY" studies/pacing_loss/analyze.py "$WORK/floor-raw/$mode" "$WORK/floor/$mode" --archive
+done
+"$PY" studies/cross_layer/analyze.py --revision --data "$WORK/floor" \
+  --profiles radio mixed mixed-clean mixed-feasible
+"$PY" studies/cross_layer/latency_reference.py --data "$WORK/floor" --plot
+```
+
+`latency-reference-tasks.csv` 逐请求记录单笔物理下界、开启该配置随机等待时的理想排程和关闭等待的理想排程。`latency-reference-summary.csv` 汇总同批请求的第 95 百分位数及 80 ms 达标率。只重算参照时，最后一条命令的 `--data` 可直接指向发布目录。逐包预留参考完整的空口和回传容量计划，而物理下界给单笔请求独享服务。第 6 节说明两者的假设和用途。
