@@ -90,7 +90,9 @@ def run_case(args, namespaces, case, repeat, emulator, logger, plan=None):
                 time.sleep(.005)
         for role, namespace in (("server", server), ("client", client)):
             argv = (args.endpoint, role, work, origin, duration, "qlog")
-            if role == "server" and (credit := plan.get("server_flow_control")):
+            if role == "client" and "stream_priority" in plan:
+                argv += (plan["stream_priority"],)
+            elif role == "server" and (credit := plan.get("server_flow_control")):
                 argv += (credit["stream_bytes"], credit["connection_bytes"])
             processes.append(launch(namespace, argv, work / (role+".log")))
         for process in processes:

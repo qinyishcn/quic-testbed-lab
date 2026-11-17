@@ -2,7 +2,9 @@
 
 每批任务由同一个用户在同一条 QUIC BBRv3 连接上，同时提交四条流，每条流上传一个 40,000 byte 的帧。实验记录服务器收齐每一帧的时刻，并比较在同一时延预算内，实际完成的帧数与按已收到字节折算的帧数。
 
-**在本次测试的预算点中，20 ms 的绝对差距最大。** 192 批合计实际收齐 78 帧，已到达字节可折算为 111 帧，相差 33 帧。预算放宽到 60 ms 时，差距缩为 12 帧。到 90 ms 时，两种口径均为 745 帧。
+**在原始的优先级 9 实验中，20 ms 的绝对差距最大。** 192 批合计实际收齐 78 帧，已到达字节可折算为 111 帧，相差 33 帧。预算放宽到 60 ms 时，差距缩为 12 帧。到 90 ms 时，两种口径均为 745 帧。
+
+**四条流都设为优先级 10 后，在 60 ms 截止时，有 111 批实际收齐 0 帧，但已到达字节足够折算为 3 帧。** 优先级 9 在同样的 192 批任务安排和空口容量时序下，未出现这种情况。
 
 ## 测试配置
 
@@ -10,6 +12,7 @@
 |---|---|
 | 流与帧 | 4 条可靠双向 QUIC 流，同时提交，每帧 40,000 byte |
 | 发送控制 | picoquic 原生 BBRv3，四条流共享连接的拥塞窗口与发包节奏 |
+| 流调度 | 原始实验中四条流均使用默认优先级 9。补测中四条流均使用优先级 10 |
 | 上行空口 | 可用容量在 10–30 Mbps 内随机变化，每 5 ms 更新。生成过程的相邻状态相关参数为 0.65 |
 | 上行逐包等待 | 每个 IP 数据报在空口入队前有 10% 概率延后 5 ms，等待结束后重新抽签 |
 | 其余链路 | 空口服务完成后直接转发给服务器。回程只承载正常的 QUIC 确认与应用回复，模拟器未额外加入回传、传播或回程时延 |
@@ -19,7 +22,7 @@
 
 24 个连接共记录 32,075 个上行数据报，含握手和预热。3,175 个至少等待一次，占 9.90%，323 个至少等待两次，占 1.01%。正式测试的 768 帧均完整到达，批次之间未发生重叠。
 
-## 时延预算与完成数
+## 优先级 9 的时延预算与完成数
 
 对第 `i` 条流，用 `t_i` 表示其上传完成时延，`D_i(K)` 表示在提交后 `K` ms 内首次到达服务器的有效业务字节。接收端 QUIC 协议日志按流号和字节区间去重，重复或重传的业务字节只计一次。对每一批分别计算下面三个量。
 
@@ -53,7 +56,7 @@
 
 第 2 个连接的第 1 批是一个具体例子。提交后 20 ms，流 1 到达 38,801 byte，流 2 到达 3,889 byte，流 3 和流 4 还没有有效字节到达。两条流均未收齐，合计 42,690 byte 可折算为 1 帧。该例说明可以优化的是有限时限内字节分布在哪条流上。若要验证实际的帧完成收益，需要实现相应的流调度并重新测量它对 QUIC 发包和确认的影响。
 
-## 各条流的完成时延
+## 优先级 9 的各条流完成时延
 
 ![四条并发 QUIC 流的完整 40 kB 上传时延累积分布](results/quic-four-stream-deadline/per-stream-upload-cdf.png)
 
@@ -68,17 +71,69 @@
 
 192 批的完成顺序均为流 1、2、3、4。流 4 最慢一笔为 114.667 ms，所以在 115 ms 的预算下，这批样本全部完成。这个顺序描述的是本次 picoquic 配置的观察结果。
 
+## 补测四条流均为优先级 10
+
+picoquic 对同为奇数优先级的流按流 ID 从小到大选择，对同为偶数优先级的流优先选择最久没有发数据的流。轮转发生在同一条 QUIC 连接内。四条流继续共享 BBRv3 的拥塞窗口和目标发包速率。
+[picoquic 选流代码](https://github.com/private-octopus/picoquic/blob/37bb5d28aaea417649a6d4facc15f54de7d55829/picoquic/streams.c#L641-L663)
+
+补测另外建立 24 条连接，每条连接测量 8 批，共 192 批、768 帧。两组使用相同的 24 个种子、空口容量时序、交付预算和任务安排。终端在优先级 10 补测中明确调用 picoquic 的接口设置客户端流的默认优先级。两组独立执行，同一个种子固定等待规则的随机数序列，实际发出的 UDP 数据报会随调度变化，因此两组中发生等待的数据报也会不同。
+
+### 两种调度在不同截止时间下能收齐几帧
+
+![两种流调度的时限内完成帧数和各流完成时延分布](results/quic-four-stream-deadline-priority10/priority-comparison.png)
+
+**图 3。** 左图横轴是上传时延预算，纵轴是 192 批的平均帧数。实线是服务器实际收齐的帧数，点线和虚线是分别按两组已收到的有效字节折算的帧数。右图横轴是从共同提交到服务器收齐某一条流的 40 kB 所经过的时间，纵轴是在该时间前收齐该流的批次百分比。右图用颜色区分流 1 到流 4，用虚线表示优先级 9，用实线表示优先级 10。左图中两组的折算曲线接近，优先级 10 的实际完成曲线在紧预算下明显更低。右图中，优先级 10 的四条流约在同一时间段完成。
+
+| 预算 K | 优先级 9 实际 / 折算帧数 | 优先级 10 实际 / 折算帧数 | 优先级 10 的折算差额 | 优先级 10 实际 0 帧且折算 3 帧的批数 |
+|---:|---:|---:|---:|---:|
+| 20 ms | 78 / 111 | 0 / 114 | 114 | 0 |
+| 40 ms | 296 / 318 | 0 / 317 | 317 | 0 |
+| 50 ms | 396 / 411 | 0 / 421 | 421 | 53 |
+| 55 ms | 453 / 473 | 3 / 465 | **462** | 85 |
+| 60 ms | 506 / 518 | 59 / 521 | **462** | **111** |
+| 65 ms | 557 / 573 | 175 / 573 | 398 | 99 |
+| 70 ms | 616 / 623 | 287 / 624 | 337 | 94 |
+| 75 ms | 659 / 663 | 408 / 662 | 254 | 72 |
+| 80 ms | 692 / 694 | 523 / 698 | 175 | 52 |
+| 90 ms | 745 / 745 | 686 / 743 | 57 | 15 |
+| 100 ms | 762 / 762 | 750 / 763 | 13 | 4 |
+
+表中的帧数按 192 批求和，最右一列每批最多计一次。优先级 10 的折算差额在 55 ms 和 60 ms 同为最大，相当于每批平均相差 2.41 帧。60 ms 时，两种调度分别可折算 518 帧和 521 帧，实际完成量却分别是 506 帧和 59 帧。每一批从第一帧完成到最后一帧完成的时间跨度，中位数从优先级 9 的 52.21 ms 缩短为优先级 10 的 1.66 ms。轮转让各帧的进度更接近，也把第一帧完成的时刻推迟。折算差额只衡量重新分配已交付字节的空间。
+
+### 一个四条流都差约 1 kB 的实测批次
+
+![同一网络种子和批次下，两种优先级各流收到的有效数据量](results/quic-four-stream-deadline-priority10/priority-example-arrivals.png)
+
+**图 4。** 两个面板使用第 1 个种子的第 1 批。横轴从四条流共同提交开始计时，纵轴是服务器从各条流累计收到的去重业务字节。每一级台阶表示收到此前未到达的字节。横向点线标出完整一帧所需的 40 kB，纵向虚线标出 75 ms 截止时间。示例取自实际完成 0 帧、可折算 3 帧、四条流都不足 40 kB 的观测点，其中进度最慢的流收到的字节数最多。
+
+| 调度 | 流 1 | 流 2 | 流 3 | 流 4 | 已收到字节合计 | 实际 / 折算帧数 |
+|---|---:|---:|---:|---:|---:|---:|
+| 优先级 9 | 40,000 | 40,000 | 40,000 | 36,096 | 156,096 | **3 / 3** |
+| 优先级 10 | 39,018 | 39,032 | 39,026 | 39,038 | 156,114 | **0 / 3** |
+
+表中的数据量单位为 byte。到 75 ms 时，两种调度收到的总量仅相差 18 byte。优先级 9 已把字节集中交付给前三帧。优先级 10 的四帧各差 962–982 byte，随后在 75.374–76.525 ms 之间陆续完成。这个批次直接展示了字节总量接近、按时交付的完整帧数却相差 3 帧的情况。
+
+优先级 10 补测的 768 帧最终全部收齐。双端抓包均无内核丢包，接收端 QUIC 日志与抓包核验一致。共有 32,064 个上行数据报，其中 3,169 个至少等待一次，326 个至少等待两次。数据报计数包含握手和预热。
+[补测配置](results/quic-four-stream-deadline-priority10/environment.json) · [抓包核验](results/quic-four-stream-deadline-priority10/validation.json) · [逐包等待核验](results/quic-four-stream-deadline-priority10/radio-check.json)
+
 ## 数据和复现
 
 - [每条流的完成时延](results/quic-four-stream-deadline/stream-completions.csv) · [分流分位数](results/quic-four-stream-deadline/stream-summary.csv)
 - [逐批、逐预算的收到字节和完成帧数](results/quic-four-stream-deadline/per-batch-deadlines.csv) · [按预算汇总](results/quic-four-stream-deadline/deadline-summary.csv)
 - [原始抓包与 QUIC 日志](results/quic-four-stream-deadline/raw-evidence.tar.xz)
+- 优先级 10 补测的[每条流完成时延](results/quic-four-stream-deadline-priority10/stream-completions.csv)、[逐批逐预算记录](results/quic-four-stream-deadline-priority10/per-batch-deadlines.csv)、[按预算汇总](results/quic-four-stream-deadline-priority10/deadline-summary.csv)、[分流分位数](results/quic-four-stream-deadline-priority10/stream-summary.csv)和[原始抓包与 QUIC 日志](results/quic-four-stream-deadline-priority10/raw-evidence.tar.xz)。
+- [两种优先级在全部预算点的对照表](results/quic-four-stream-deadline-priority10/priority-comparison.csv) · [图 4 的逐流到达记录](results/quic-four-stream-deadline-priority10/priority-example-arrivals.csv)
 
-使用与[跨层实验相同的 BBRv3 端点](studies/cross_layer/README.md)构建方式。这里只启动 BBRv3 模式和单段空口中继。下面的命令从仓库根目录运行，`ENDPOINT` 指向已构建的端点。
+使用与跨层实验相同的方式构建 BBRv3 端点。这里只启动 BBRv3 模式和单段空口中继。下面的命令从仓库根目录运行，`ENDPOINT` 指向用当前代码重新构建的端点。绘图脚本可用 `--font` 指定支持中文的字体文件。 [端点构建方式](studies/cross_layer/README.md)
 
 ```bash
 sudo "$PY" studies/multistream/experiment.py --testbed "$TESTBED" --endpoint "$ENDPOINT" \
   --out "$WORK/four-stream-raw" --repeats 24
 "$PY" studies/pacing_loss/analyze.py "$WORK/four-stream-raw" "$WORK/four-stream" --archive
 "$PY" studies/multistream/analyze.py --data "$WORK/four-stream"
+sudo "$PY" studies/multistream/experiment.py --testbed "$TESTBED" --endpoint "$ENDPOINT" \
+  --out "$WORK/priority10-raw" --repeats 24 --stream-priority 10
+"$PY" studies/pacing_loss/analyze.py "$WORK/priority10-raw" "$WORK/priority10" --archive
+"$PY" studies/multistream/analyze.py --data "$WORK/priority10"
+"$PY" studies/multistream/compare_priorities.py results/quic-four-stream-deadline "$WORK/priority10"
 ```

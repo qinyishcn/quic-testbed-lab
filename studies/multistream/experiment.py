@@ -1,6 +1,7 @@
 """Run simultaneous 40 kB streams on one QUIC BBRv3 connection over a single radio queue."""
 
 import argparse
+import json
 import os
 import sys
 from pathlib import Path
@@ -38,6 +39,7 @@ def main():
     for flag in ("testbed", "endpoint", "out"):
         parser.add_argument(f"--{flag}", type=Path, required=True)
     parser.add_argument("--repeats", type=int, default=24)
+    parser.add_argument("--stream-priority", type=int, choices=(9, 10), default=9)
     args = parser.parse_args()
     if os.geteuid() or args.repeats < 1:
         parser.error("requires root and positive repeats")
@@ -50,7 +52,6 @@ def main():
 
     relay = ROOT/"studies/pacing_loss/relay.py"
     with topology() as names:
-        import json
         router = json.loads(output("ip", "netns", "exec", names[1], "tc", "-j", "qdisc", "show"))
         qdiscs = {r["dev"]: r["kind"] for r in router if r["dev"] in ("r0", "r1")}
         if qdiscs != {"r0": "noqueue", "r1": "noqueue"}:
@@ -61,11 +62,17 @@ def main():
              testbed_hashes=hashes, kernel=os.uname().release, router_qdiscs=qdiscs,
              endpoint_hash=sha(args.endpoint), runner_hash=sha(Path(__file__)), relay_hash=sha(relay),
              cases=[CASE], repeats=args.repeats, measured_tasks_per_run=STREAMS*BATCHES,
+             stream_priority=args.stream_priority,
              batches_per_run=BATCHES, streams_per_batch=STREAMS, frame_bytes=FRAME_BYTES,
              reverse={"min_us": 0, "max_us": 0}, forward_propagation_us=0, forward_queues=1))
         args.relay = relay
         for repeat in range(args.repeats):
-            run_case(args, names, CASE, repeat, None, logger, plan_for(repeat))
+            plan = plan_for(repeat)
+            plan["stream_priority"] = args.stream_priority
+            run_case(args, names, CASE, repeat, None, logger, plan)
+            work = args.out / f"{CASE}__{repeat:02d}"
+            if f"default_stream_priority={args.stream_priority}" not in (work/"client.log").read_text().splitlines():
+                raise RuntimeError(f"{work.name}: client did not confirm the configured stream priority")
 
 
 if __name__ == "__main__":

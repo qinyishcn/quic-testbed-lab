@@ -22,6 +22,16 @@ def main():
         raise ValueError("picoquic commit differs from the BBRv3 baseline")
     out.mkdir(parents=True)
     code = endpoint_source(select_bbr3((ROOT / "v3/endpoint.c").read_text()))
+    code = replace_once(code, "    if (argc != 6 && argc != 8) return 2;",
+                        "    if (argc != 6 && argc != 7 && argc != 8) return 2;")
+    code = replace_once(code, "    if (argc == 8) {", r"""    if (argc == 7) {
+        char *end;
+        unsigned long priority = strtoul(argv[6], &end, 10);
+        if (!client || end == argv[6] || *end || priority > UINT8_MAX) return 2;
+        picoquic_set_default_priority(quic, (uint8_t)priority);
+        fprintf(stderr, "default_stream_priority=%u\n", (unsigned)quic->default_stream_priority);
+    }
+    if (argc == 8) {""")
     code = replace_once(code, "static int client, failed;",
                         'static int client, failed;\n#include "control.h"')
     code = replace_once(code, "    picoquic_set_default_congestion_algorithm(quic, picoquic_bbr_algorithm);",
