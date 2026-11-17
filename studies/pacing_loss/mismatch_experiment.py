@@ -26,6 +26,7 @@ DURATION_US = 2_000_000
 GATE = {"probability": .1, "wait_us": 5000}
 LONG_RISE = "bounded_rise_long"
 TRAIN_RISE = "bounded_rise_40kb_train"
+SERVER_CREDIT = {"stream_bytes": 512 * 1024, "connection_bytes": 8 * 1024 * 1024}
 BOUNDED_CAPACITY = {
     "bounded_fixed": [(0, 20)],
     "bounded_rise": [(0, 20), (CHANGE_US, 30)],
@@ -41,7 +42,7 @@ def plan_for(case, repeat, gate):
         tasks = plan["tasks"][:1]
         tasks.extend(dict(t=CHANGE_US - 1000 + i * 8000, size=40_000, warmup=False) for i in range(125))
         return dict(plan, case=case, duration=7_000_000, tasks=tasks,
-                    server_flow_control=dict(stream_bytes=512 * 1024, connection_bytes=8 * 1024 * 1024))
+                    server_flow_control=SERVER_CREDIT)
     if case == LONG_RISE:
         plan = plan_for("bounded_rise", repeat, gate)
         plan.update(case=case, duration=4_200_000)
@@ -68,10 +69,17 @@ def plan_for(case, repeat, gate):
                 impairments=[], buffer_packets=256, gate=GATE if gate else None)
 
 
+def paced_requests(case, repeat, gate):
+    plan = plan_for(case, repeat, gate)
+    tasks = plan["tasks"][:1]
+    tasks.extend(dict(t=CHANGE_US - 1000 + i * 33_000, size=40_000, warmup=False) for i in range(30))
+    return dict(plan, tasks=tasks, duration=2_850_000, server_flow_control=SERVER_CREDIT)
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--testbed", type=Path, required=True)
-    parser.add_argument("--bbr1", type=Path, help="Required except when running the 40 kB train with BBRv3 alone")
+    parser.add_argument("--bbr1", type=Path, help="Optional for the BBRv3-only 40 kB studies")
     parser.add_argument("--bbr3", type=Path, required=True)
     parser.add_argument("--out", type=Path, required=True)
     parser.add_argument("--repeats", type=int, default=3)
@@ -79,6 +87,8 @@ def main():
                         default=list(CASES))
     parser.add_argument("--reverse-delay-ms", type=int, nargs=2, metavar=("MIN", "MAX"),
                         help="Run only the forward-gate groups, with independent uniform reverse delay")
+    parser.add_argument("--train-33ms", action="store_true",
+                        help="Use 30 consecutive 40 kB requests, submitted every 33 ms")
     args = parser.parse_args()
     if os.geteuid() or args.repeats < 1 or len(args.only) != len(set(args.only)):
         parser.error("requires root, positive repeats and distinct cases")
@@ -90,9 +100,12 @@ def main():
         reverse_delay = dict(min_us=lower * 1000, max_us=upper * 1000)
     if (LONG_RISE in args.only or TRAIN_RISE in args.only) and (len(args.only) != 1 or not reverse_delay):
         parser.error("a sustained rise case requires its own run with reverse delay")
-    if args.bbr1 is None and args.only != [TRAIN_RISE]:
+    if args.train_33ms and (not reverse_delay or args.bbr1 or {LONG_RISE, TRAIN_RISE}.intersection(args.only)):
+        parser.error("--train-33ms requires reverse delay, BBRv3 only, and standard capacity profiles")
+    if args.bbr1 is None and args.only != [TRAIN_RISE] and not args.train_33ms:
         parser.error("--bbr1 is required for this workload")
-    workload = plan_for(args.only[0], 0, False)
+    make_plan = paced_requests if args.train_33ms else plan_for
+    workload = make_plan(args.only[0], 0, False)
     testbed = args.testbed.resolve()
     hashes = testbed_components(testbed)
     sys.path[:0] = [str(testbed / "netemu/src"), str(testbed / "aitestbed")]
@@ -127,7 +140,7 @@ def main():
             for case in args.only:
                 for version, gate in (variants if repeat % 2 == 0 else reversed(variants)):
                     mode = f"{version}-{'gate' if gate else 'rate'}"
-                    plan = plan_for(case, repeat, gate)
+                    plan = make_plan(case, repeat, gate)
                     if reverse_delay:
                         mode += "-reverse"
                         plan["reverse_delay"] = dict(reverse_delay, seed=plan["seed"] + 1_000_000)

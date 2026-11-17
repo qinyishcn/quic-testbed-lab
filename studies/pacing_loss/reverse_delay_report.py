@@ -172,7 +172,7 @@ def plot_long_rise(runs, out, *, request_train=False):
     figure(out, "train-40kb-rise" if request_train else "sustained-rise", fig)
 
 
-def train_flow_control(source, out, runs):
+def train_flow_control(source, out, runs, filename="train-40kb-flow-control.csv"):
     """Verify the negotiated limits and look for credit exhaustion on the sender."""
     results = []
     for mode in TRAIN_MODES:
@@ -197,7 +197,7 @@ def train_flow_control(source, out, runs):
                                     streams_blocked=sum(n for f, n in frames.items() if f.startswith("streams_blocked"))))
     if len(results) != len(runs) or len({(r["mode"], r["run"]) for r in results}) != len(runs):
         raise ValueError("Missing client qlog for a 40 kB train run")
-    csv_write(out / "train-40kb-flow-control.csv", sorted(results, key=lambda r: (r["mode"], r["run"])))
+    csv_write(out / filename, sorted(results, key=lambda r: (r["mode"], r["run"])))
 
 
 def main():
