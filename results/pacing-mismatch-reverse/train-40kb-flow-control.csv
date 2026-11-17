@@ -1,0 +1,6 @@
+mode,run,stream_bytes,connection_bytes,stream_data_blocked,data_blocked,streams_blocked
+bbr3-gate-reverse,bounded_rise_40kb_train__00,524288,8388608,0,0,0
+bbr3-gate-reverse,bounded_rise_40kb_train__01,524288,8388608,0,0,0
+bbr3-gate-reverse,bounded_rise_40kb_train__02,524288,8388608,0,0,0
+bbr3-gate-reverse,bounded_rise_40kb_train__03,524288,8388608,0,0,0
+bbr3-gate-reverse,bounded_rise_40kb_train__04,524288,8388608,0,0,0

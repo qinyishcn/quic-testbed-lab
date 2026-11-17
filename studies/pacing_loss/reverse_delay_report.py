@@ -1,6 +1,9 @@
 """Build the combined forward-gate and reverse-delay report figures and tables."""
 
 import argparse
+import json
+import tarfile
+from collections import Counter
 from pathlib import Path
 from statistics import median
 
@@ -11,7 +14,9 @@ from mismatch_report import (BOUNDED_LABELS, BOUNDED_SPANS, CAP, CHANGE, OUT, PA
 
 COHORT = "pacing-mismatch-reverse"
 LONG_RISE = "bounded_rise_long"
+TRAIN_RISE = "bounded_rise_40kb_train"
 MODES = ("bbr1-gate-reverse", "bbr3-gate-reverse")
+TRAIN_MODES = ("bbr3-gate-reverse",)
 CASES = tuple(BOUNDED_LABELS)
 COLORS = ("#3a5c81", "#398079", "#ac4848", "#997223")
 
@@ -88,16 +93,20 @@ def plot_outcomes(tasks, confirmations, out):
     figure(out, "delivery-and-ack", fig)
 
 
-def plot_long_rise(runs, out):
+def plot_long_rise(runs, out, *, request_train=False):
     """Compare 2 ms observations at the step with 50 ms means during sustained demand."""
-    fig, axes = plt.subplots(3, 2, figsize=(13, 9.3), sharey="row", layout="constrained")
-    fig.suptitle("3 MB 连续上传｜升速初期的失配与随后空口容量的利用", fontsize=16, fontweight="bold")
+    modes = TRAIN_MODES if request_train else MODES
+    fig, axes = plt.subplots(3, len(modes), figsize=(10.5 if request_train else 13, 9.3),
+                             sharey="row", squeeze=False, layout="constrained")
+    title = "每 8 ms 提交一笔 40 kB" if request_train else "3 MB 连续上传"
+    fig.suptitle(f"{title}｜升速初期的失配与随后空口容量的利用", fontsize=16, fontweight="bold")
     early = list(range(0, 81, 2))
     coarse = list(range(0, 801, 50))
-    late = list(range(550, 601, 2))
+    late = list(range(700, 751, 2)) if request_train else list(range(550, 601, 2))
+    detail_repeat = "第三轮" if request_train else "第一轮"
     groups = [(0, 8), (0, 100), (100, 500), (500, 800)]
     table = []
-    for j, mode in enumerate(MODES):
+    for j, mode in enumerate(modes):
         detail, overview, zoom = axes[:, j]
         for ax in axes[:, j]:
             ax.axhline(30, color=CAP, lw=1.4, ls="--", label="空口容量（30 Mbps）")
@@ -105,11 +114,11 @@ def plot_long_rise(runs, out):
         for (tag, run), (raw, wire, rows) in sorted(runs.items()):
             if tag != mode:
                 continue
-            job = rows["tasks"][0]
-            completed = float(job["start_ms"]) + float(job["upload_ms"]) - CHANGE
+            completed = max(float(job["start_ms"]) + float(job["upload_ms"]) - CHANGE
+                            for job in rows["tasks"])
             if completed < coarse[-1]:
                 raise ValueError("Upload finished before the comparison window ended")
-            if run.endswith("__00"):
+            if run.endswith("__02" if request_train else "__00"):
                 pacing = samples(raw, "pacing_bps", 1e6)
                 for ax, edges in ((detail, early), (zoom, late)):
                     step(ax, pacing, edges[0], edges[-1], color=PACE, lw=1.5, label="目标发包速率")
@@ -127,28 +136,67 @@ def plot_long_rise(runs, out):
                             color="#91a1a8", alpha=.55, lw=.9)
         overview.stairs([median(v) for v in by_window.values()], coarse, baseline=None,
                         color=OUT, lw=2.1, label="实际出队速率（五轮中位数）")
+        if request_train:
+            overview.stairs([v[2] for v in by_window.values()], coarse, baseline=None,
+                            color="#795093", lw=1.4, ls="--", label="第三轮（放大示例）")
         overview.axvspan(500, 800, color=OUT, alpha=.09, label="后段统计区间")
         overview.axvspan(late[0], late[-1], color=OUT, alpha=.13)
-        style(detail, f"BBRv{mode[3]}｜初期 80 ms，第一轮", "速率（Mbps）" if j == 0 else "")
+        style(detail, f"BBRv{mode[3]}｜初期 80 ms，{detail_repeat}", "速率（Mbps）" if j == 0 else "")
         style(overview, f"BBRv{mode[3]}｜每 50 ms 平均值，灰线为逐轮", "速率（Mbps）" if j == 0 else "")
-        style(zoom, f"BBRv{mode[3]}｜放大 550–600 ms，第一轮", "速率（Mbps）" if j == 0 else "")
+        style(zoom, f"BBRv{mode[3]}｜放大 {late[0]}–{late[-1]} ms，{detail_repeat}",
+              "速率（Mbps）" if j == 0 else "")
         for ax, bounds in zip((detail, overview, zoom), (early, coarse, late)):
             ax.set_xlim(bounds[0], bounds[-1])
             ax.set_ylim(bottom=0)
             ax.set_xlabel("距空口从 20 Mbps 升至 30 Mbps 的时间（ms）")
     for ax in axes[:2, 0]:
         ax.legend(loc="lower right", fontsize=8, framealpha=.95)
-    csv_write(out / "scale-windows.csv", table)
-    figure(out, "sustained-rise", fig)
+    csv_write(out / ("train-40kb-windows.csv" if request_train else "scale-windows.csv"), table)
+    figure(out, "train-40kb-rise" if request_train else "sustained-rise", fig)
+
+
+def train_flow_control(source, out, runs):
+    """Verify the negotiated limits and look for credit exhaustion on the sender."""
+    results = []
+    for mode in TRAIN_MODES:
+        with tarfile.open(source / mode / "raw-evidence.tar.xz", "r|xz") as archive:
+            for member in archive:
+                run, _, path = member.name.partition("/")
+                if not (path.startswith("qlog-client/") and path.endswith(".qlog")):
+                    continue
+                events = json.load(archive.extractfile(member))["traces"][0]["events"]
+                remote = next(d for _, _, name, d in events
+                              if name == "parameters_set" and d["owner"] == "remote"
+                              and "initial_max_stream_data_bidi_remote" in d)
+                expected = runs[mode, run][0]["plan.json"]["server_flow_control"]
+                if (remote["initial_max_stream_data_bidi_remote"] != expected["stream_bytes"]
+                        or remote["initial_max_data"] != expected["connection_bytes"]):
+                    raise ValueError(f"Negotiated flow-control limits differ from the plan in {mode}/{run}")
+                frames = Counter(f["frame_type"] for _, _, name, d in events
+                                 if name == "packet_sent" for f in d.get("frames", []))
+                results.append(dict(mode=mode, run=run, **expected,
+                                    stream_data_blocked=frames["stream_data_blocked"],
+                                    data_blocked=frames["data_blocked"],
+                                    streams_blocked=sum(n for f, n in frames.items() if f.startswith("streams_blocked"))))
+    if len(results) != len(runs) or len({(r["mode"], r["run"]) for r in results}) != len(runs):
+        raise ValueError("Missing client qlog for a 40 kB train run")
+    csv_write(out / "train-40kb-flow-control.csv", sorted(results, key=lambda r: (r["mode"], r["run"])))
 
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--data", type=Path, default=ROOT / "results")
     parser.add_argument("--font", type=Path)
+    parser.add_argument("--train-40kb", action="store_true", help="Regenerate the BBRv3-only burst train report")
     args = parser.parse_args()
     set_chinese_font(args.font)
     out = args.data / COHORT
+    if args.train_40kb:
+        train_cohort = f"{COHORT}/train-40kb"
+        train = load(args.data, {train_cohort: (TRAIN_RISE,)}, TRAIN_MODES)
+        train_flow_control(args.data / train_cohort, out, train)
+        plot_long_rise(train, out, request_train=True)
+        return
     runs = load(args.data, {COHORT: CASES}, MODES)
     tables(runs, out, BOUNDED_SPANS)
     tasks, confirmations = timing_tables(runs, out)

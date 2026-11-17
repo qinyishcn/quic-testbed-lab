@@ -103,7 +103,7 @@ static int submit(picoquic_cnx_t *cnx, task_t *task, size_t index, uint64_t now)
 
 int main(int argc, char **argv)
 {
-    if (argc != 6) return 2;
+    if (argc != 6 && argc != 8) return 2;
     client = !strcmp(argv[1], "client");
     if (chdir(argv[2])) return 2;
     uint64_t origin = strtoull(argv[3], NULL, 10), end = origin + strtoull(argv[4], NULL, 10);
@@ -135,6 +135,18 @@ int main(int argc, char **argv)
     picoquic_quic_t *quic = picoquic_create(2, client ? NULL : "../cert.pem", client ? NULL : "../key.pem",
         client ? "../cert.pem" : NULL, ALPN, callback, NULL, NULL, NULL, NULL, now, &now, NULL, NULL, 0);
     if (!quic) return 2;
+    if (argc == 8) {
+        char *stream_end, *connection_end;
+        uint64_t stream_credit = strtoull(argv[6], &stream_end, 10);
+        uint64_t connection_credit = strtoull(argv[7], &connection_end, 10);
+        if (client || *stream_end || *connection_end || !stream_credit ||
+            connection_credit < stream_credit || connection_credit >= (UINT64_C(1) << 62) ||
+            picoquic_set_default_tp_value(quic, picoquic_tp_initial_max_stream_data_bidi_remote, stream_credit) ||
+            picoquic_set_default_tp_value(quic, picoquic_tp_initial_max_data, connection_credit)) {
+            fprintf(stderr, "invalid server flow-control credits\n");
+            return 2;
+        }
+    }
     picoquic_set_default_congestion_algorithm(quic, picoquic_bbr1_algorithm);
     picoquic_set_default_pmtud_policy(quic, picoquic_pmtud_blocked);
     if (!strcmp(argv[5], "qlog")) {

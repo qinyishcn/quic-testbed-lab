@@ -25,6 +25,7 @@ RECOVERY_US = 1_330_000
 DURATION_US = 2_000_000
 GATE = {"probability": .1, "wait_us": 5000}
 LONG_RISE = "bounded_rise_long"
+TRAIN_RISE = "bounded_rise_40kb_train"
 BOUNDED_CAPACITY = {
     "bounded_fixed": [(0, 20)],
     "bounded_rise": [(0, 20), (CHANGE_US, 30)],
@@ -35,6 +36,12 @@ BOUNDED_CAPACITY = {
 
 
 def plan_for(case, repeat, gate):
+    if case == TRAIN_RISE:
+        plan = plan_for("bounded_rise", repeat, gate)
+        tasks = plan["tasks"][:1]
+        tasks.extend(dict(t=CHANGE_US - 1000 + i * 8000, size=40_000, warmup=False) for i in range(125))
+        return dict(plan, case=case, duration=7_000_000, tasks=tasks,
+                    server_flow_control=dict(stream_bytes=512 * 1024, connection_bytes=8 * 1024 * 1024))
     if case == LONG_RISE:
         plan = plan_for("bounded_rise", repeat, gate)
         plan.update(case=case, duration=4_200_000)
@@ -64,11 +71,12 @@ def plan_for(case, repeat, gate):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--testbed", type=Path, required=True)
-    parser.add_argument("--bbr1", type=Path, required=True)
+    parser.add_argument("--bbr1", type=Path, help="Required except when running the 40 kB train with BBRv3 alone")
     parser.add_argument("--bbr3", type=Path, required=True)
     parser.add_argument("--out", type=Path, required=True)
     parser.add_argument("--repeats", type=int, default=3)
-    parser.add_argument("--only", nargs="+", choices=(*CASES, *BOUNDED_CAPACITY, LONG_RISE), default=list(CASES))
+    parser.add_argument("--only", nargs="+", choices=(*CASES, *BOUNDED_CAPACITY, LONG_RISE, TRAIN_RISE),
+                        default=list(CASES))
     parser.add_argument("--reverse-delay-ms", type=int, nargs=2, metavar=("MIN", "MAX"),
                         help="Run only the forward-gate groups, with independent uniform reverse delay")
     args = parser.parse_args()
@@ -80,8 +88,11 @@ def main():
         if not 0 <= lower <= upper:
             parser.error("reverse delay bounds must be nonnegative and in order")
         reverse_delay = dict(min_us=lower * 1000, max_us=upper * 1000)
-    if LONG_RISE in args.only and (args.only != [LONG_RISE] or not reverse_delay):
-        parser.error("the sustained rise case requires its own run with reverse delay")
+    if (LONG_RISE in args.only or TRAIN_RISE in args.only) and (len(args.only) != 1 or not reverse_delay):
+        parser.error("a sustained rise case requires its own run with reverse delay")
+    if args.bbr1 is None and args.only != [TRAIN_RISE]:
+        parser.error("--bbr1 is required for this workload")
+    workload = plan_for(args.only[0], 0, False)
     testbed = args.testbed.resolve()
     hashes = testbed_components(testbed)
     sys.path[:0] = [str(testbed / "netemu/src"), str(testbed / "aitestbed")]
@@ -89,7 +100,8 @@ def main():
 
     target = args.out.resolve()
     target.mkdir(parents=True)
-    endpoints = {"bbr1": args.bbr1.resolve(strict=True), "bbr3": args.bbr3.resolve(strict=True)}
+    endpoints = {version: path.resolve(strict=True) for version, path in
+                 (("bbr1", args.bbr1), ("bbr3", args.bbr3)) if path is not None}
     loggers = {}
     with topology() as namespaces:
         qdisc = json.loads(output("ip", "netns", "exec", namespaces[1], "tc", "-j", "qdisc", "show"))
@@ -109,7 +121,7 @@ def main():
                  kernel=os.uname().release, router_qdiscs=qdiscs, endpoint_hash=sha(endpoints[version]),
                  runner_hash=sha(Path(__file__)), relay_hash=sha(Path(__file__).with_name("relay.py")),
                  cases=args.only, repeats=args.repeats,
-                 measured_tasks_per_run=1 if LONG_RISE in args.only else 2, mode=mode,
+                 measured_tasks_per_run=len(workload["tasks"]) - 1, mode=mode,
                  added_delay_us=0, reverse=reverse_delay or "direct", gate=GATE if gate else None))
         for repeat in range(args.repeats):
             for case in args.only:

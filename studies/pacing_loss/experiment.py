@@ -85,8 +85,10 @@ def run_case(args, namespaces, case, repeat, emulator, logger, plan=None):
                     raise RuntimeError("packet capture failed")
                 time.sleep(.005)
         for role, namespace in (("server", server), ("client", client)):
-            processes.append(launch(namespace, (args.endpoint, role, work, origin, duration, "qlog"),
-                                    work / (role+".log")))
+            argv = (args.endpoint, role, work, origin, duration, "qlog")
+            if role == "server" and (credit := plan.get("server_flow_control")):
+                argv += (credit["stream_bytes"], credit["connection_bytes"])
+            processes.append(launch(namespace, argv, work / (role+".log")))
         for process in processes:
             if process.wait(timeout=duration / 1e6 + 4):
                 raise RuntimeError(f"{work.name}: child process failed")

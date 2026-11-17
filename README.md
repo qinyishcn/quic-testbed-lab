@@ -8,7 +8,7 @@
 
 **拥塞窗口启动实测**：[BBRv1 和 BBRv3 的连接预热及首笔正式请求](REPORT.bbr-startup.zh-CN.md)
 
-**空口容量失配实测**：[容量波动限制在 ±50% 和 ±20% 时的补测，以及深度降速对照](REPORT.pacing-mismatch.zh-CN.md) · [上行逐包随机等待与回程 10–20 ms 随机时延](REPORT.pacing-mismatch-reverse.zh-CN.md)
+**空口容量失配实测**：[容量波动限制在 ±50% 和 ±20% 时的补测，以及深度降速对照](REPORT.pacing-mismatch.zh-CN.md) · [上行逐包随机等待与回程 10–20 ms 随机时延](REPORT.pacing-mismatch-reverse.zh-CN.md) · [BBRv3 连续 40 kB 请求与流控补测](REPORT.pacing-mismatch-40kb-bbr3.zh-CN.md)
 
 **第三版**使用原生 QUIC BBRv1 比较四种黄金管道机制，覆盖稳定容量、按任务授权、提前选择上传数据量和分段 pacing。[第三版报告](REPORT.v3.zh-CN.md) · [复现](v3/README.md) · [分组结果](results/v3/task-summary.csv)
 
