@@ -100,7 +100,7 @@ def plot_long_rise(runs, out, *, request_train=False):
                              sharey="row", squeeze=False, layout="constrained")
     title = "每 8 ms 提交一笔 40 kB" if request_train else "3 MB 连续上传"
     fig.suptitle(f"{title}｜升速初期的失配与随后空口容量的利用", fontsize=16, fontweight="bold")
-    early = list(range(0, 81, 2))
+    early = list(range(-20 if request_train else 0, 81, 2))
     coarse = list(range(0, 801, 50))
     late = list(range(700, 751, 2)) if request_train else list(range(550, 601, 2))
     detail_repeat = "第三轮" if request_train else "第一轮"
@@ -108,7 +108,7 @@ def plot_long_rise(runs, out, *, request_train=False):
     table = []
     for j, mode in enumerate(modes):
         detail, overview, zoom = axes[:, j]
-        for ax in axes[:, j]:
+        for ax in ((overview, zoom) if request_train else axes[:, j]):
             ax.axhline(30, color=CAP, lw=1.4, ls="--", label="空口容量（30 Mbps）")
         by_window = {a: [] for a in coarse[:-1]}
         for (tag, run), (raw, wire, rows) in sorted(runs.items()):
@@ -119,6 +119,10 @@ def plot_long_rise(runs, out, *, request_train=False):
             if completed < coarse[-1]:
                 raise ValueError("Upload finished before the comparison window ended")
             if run.endswith("__02" if request_train else "__00"):
+                if request_train:
+                    capacity = [(t / 1000 - CHANGE, rate) for t, rate in raw["plan.json"]["capacity"]]
+                    step(detail, capacity, early[0], early[-1], color=CAP, lw=1.4, ls="--", zorder=4,
+                         label="空口容量（20→30 Mbps）")
                 pacing = samples(raw, "pacing_bps", 1e6)
                 for ax, edges in ((detail, early), (zoom, late)):
                     step(ax, pacing, edges[0], edges[-1], color=PACE, lw=1.5, label="目标发包速率")
@@ -141,7 +145,8 @@ def plot_long_rise(runs, out, *, request_train=False):
                             color="#795093", lw=1.4, ls="--", label="第三轮（放大示例）")
         overview.axvspan(500, 800, color=OUT, alpha=.09, label="后段统计区间")
         overview.axvspan(late[0], late[-1], color=OUT, alpha=.13)
-        style(detail, f"BBRv{mode[3]}｜初期 80 ms，{detail_repeat}", "速率（Mbps）" if j == 0 else "")
+        detail_span = "升速前 20 ms 至升速后 80 ms" if request_train else "初期 80 ms"
+        style(detail, f"BBRv{mode[3]}｜{detail_span}，{detail_repeat}", "速率（Mbps）" if j == 0 else "")
         style(overview, f"BBRv{mode[3]}｜每 50 ms 平均值，灰线为逐轮", "速率（Mbps）" if j == 0 else "")
         style(zoom, f"BBRv{mode[3]}｜放大 {late[0]}–{late[-1]} ms，{detail_repeat}",
               "速率（Mbps）" if j == 0 else "")
