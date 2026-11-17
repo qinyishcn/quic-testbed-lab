@@ -75,4 +75,6 @@ done
 
 等价体验速率图沿用这组样本。在上述命令末尾加上 `--experience-rate`，即可重算常规速率 CDF 与 99% 达标速率。
 
+全量等价体验速率图用 `python studies/cross_layer/latency_cdf.py --data results/cross-layer-backhaul-10-30 --experience-rate` 重算。
+
 端到端服务参照、服务器有效接收速率和待交付量通过 `python studies/cross_layer/goodput_timeline.py` 重算。程序从两个原始归档中读取配对的容量计划和接收端协议日志，输出图 3、50 ms 分窗数据及选中的展示窗口。

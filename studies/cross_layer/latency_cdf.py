@@ -174,10 +174,10 @@ def plot(folder, uploads, *, labels=PROFILES, title="空口与回传随机波动
     figure(folder, filename, fig)
 
 
-def plot_experience_rate(folder, uploads, labels, filename):
+def plot_experience_rate(folder, uploads, labels, filename, *, title):
     fig, axes = plt.subplots(len(labels), 2, figsize=(12.8, 4.1*len(labels)), squeeze=False,
                              layout="constrained")
-    fig.suptitle("低回传容量时，40 kB 上传的等价体验速率", fontsize=16, fontweight="bold")
+    fig.suptitle(title, fontsize=16, fontweight="bold")
     for (profile, label), (full, tail) in zip(labels.items(), axes):
         rates = {m: np.sort(320 / uploads[profile, m]) for m in MODES}
         left = .85*min(v[0] for v in rates.values())
@@ -235,7 +235,8 @@ def plot_submit_backhaul_band(folder, low, high, experience_rate=False):
     labels = {p: f"提交时回传 {band}（{len(cohorts[p, 'radio'])} 笔）" for p in PROFILES if p in profiles}
     ordered = {key: np.sort(values) for key, values in uploads.items()}
     if experience_rate:
-        plot_experience_rate(folder, ordered, labels, f"experience-rate-cdf-backhaul-{low:g}-{high:g}")
+        plot_experience_rate(folder, ordered, labels, f"experience-rate-cdf-backhaul-{low:g}-{high:g}",
+                             title="低回传容量时，40 kB 上传的等价体验速率")
     else:
         plot(folder, ordered, labels=labels, title="低回传容量时，40 kB 上传时延分布",
              filename=f"upload-latency-cdf-backhaul-{low:g}-{high:g}", tail_floor=.95, marks=(.99,))
@@ -247,10 +248,9 @@ def main():
     parser.add_argument("--font", type=Path)
     parser.add_argument("--submit-backhaul-band", nargs=2, type=float, metavar=("LOW", "HIGH"),
                         help="plot an existing paired cohort with LOW <= backhaul at nominal submit time < HIGH")
-    parser.add_argument("--experience-rate", action="store_true", help="convert the selected cohort to 40 kB upload rates")
+    parser.add_argument("--experience-rate", action="store_true",
+                        help="plot 40 kB upload rates for all requests or the selected backhaul band")
     args = parser.parse_args()
-    if args.experience_rate and not args.submit_backhaul_band:
-        parser.error("--experience-rate requires --submit-backhaul-band")
     set_chinese_font(args.font)
     if args.submit_backhaul_band:
         low, high = args.submit_backhaul_band
@@ -260,6 +260,12 @@ def main():
         return
     tasks = collect(args.data)
     rows, uploads = summarise(tasks)
+    if args.experience_rate:
+        labels = {p: f"{label}（{len(uploads[p, 'bbr']):,} 笔）" for p, label in PROFILES.items()
+                  if (p, "bbr") in uploads}
+        plot_experience_rate(args.data, uploads, labels, "experience-rate-cdf",
+                             title="全量请求的 40 kB 上传等价体验速率")
+        return
     csv_write(args.data / "tasks.csv", tasks)
     csv_write(args.data / "p99-summary.csv", rows)
     plot(args.data, uploads)
