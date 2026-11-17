@@ -6,6 +6,7 @@ import json
 import math
 import sys
 import tarfile
+from bisect import bisect_right
 from collections import defaultdict
 from pathlib import Path
 
@@ -14,7 +15,7 @@ import numpy as np
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT))
 from analyze import csv_write
-from studies.cross_layer.analyze import tasks_for
+from studies.cross_layer.analyze import read, tasks_for
 from studies.cross_layer.config import TAIL_BACKHAUL
 from studies.cross_layer.latency_reference import reference_tasks
 from v3.plots import figure, plt, set_chinese_font, style
@@ -135,11 +136,12 @@ def summarise(tasks):
     return results, uploads
 
 
-def plot(folder, uploads):
-    profiles = [(p, label) for p, label in PROFILES.items() if (p, "bbr") in uploads]
+def plot(folder, uploads, *, labels=PROFILES, title="空口与回传随机波动时，完整 40 kB 上传时延分布",
+         filename="upload-latency-cdf", tail_floor=.90, marks=TAIL_MARKS):
+    profiles = [(p, label) for p, label in labels.items() if (p, "bbr") in uploads]
     fig, axes = plt.subplots(len(profiles), 2, figsize=(12.8, 4*len(profiles)),
                              squeeze=False, layout="constrained")
-    fig.suptitle("空口与回传随机波动时，完整 40 kB 上传时延分布", fontsize=16, fontweight="bold")
+    fig.suptitle(title, fontsize=16, fontweight="bold")
     for (profile, label), (full, tail) in zip(profiles, axes):
         data = [uploads[profile, mode] for mode in MODES]
         left = .95*min(v[0] for v in data)
@@ -149,33 +151,75 @@ def plot(folder, uploads):
             y = np.r_[0, 100*np.arange(1, len(v)+1)/len(v), 100]
             for panel in (full, tail):
                 panel.step(x, y, where="post", color=COLORS[mode], lw=1.65, label=LABELS[mode])
-            tail.scatter([ecdf_quantile(v, p) for p in TAIL_MARKS], [100*p for p in TAIL_MARKS],
-                         color=COLORS[mode], s=29, zorder=5, edgecolor="white", linewidth=.35)
+            points = [ecdf_quantile(v, p) for p in marks]
+            tail.scatter(points, [100*p for p in marks], color=COLORS[mode], s=29, zorder=5,
+                         edgecolor="white", linewidth=.35)
+            if marks == (.99,):
+                tail.annotate(f"{points[0]:.2f} ms", (points[0], 99), xytext=(5, 6),
+                              textcoords="offset points", color=COLORS[mode], fontsize=9)
         style(full, f"{label} · 全分布", "累计完成比例（%）")
         style(tail, f"{label} · 尾部放大", "累计完成比例（%）")
         full.set(xlim=(left, right), ylim=(0, 101))
-        tail.set(xlim=(.95*min(ecdf_quantile(v, .90) for v in data), right), ylim=(89.5, 100.15),
-                 yticks=[90, 92, 94, 95, 96, 98, 99, 100])
-        for i, p in enumerate(TAIL_MARKS):
+        tail.set(xlim=(.95*min(ecdf_quantile(v, tail_floor) for v in data), right),
+                 ylim=(100*tail_floor-.5, 100.15),
+                 yticks=[y for y in (90, 92, 94, 95, 96, 98, 99, 100) if y >= 100*tail_floor])
+        for i, p in enumerate(marks):
             tail.axhline(100*p, ls="--", lw=.75, color="#525b63",
-                         label="90%、95%、99%" if i == 0 else None)
+                         label="、".join(f"{100*q:.0f}%" for q in marks) if i == 0 else None)
         for panel in (full, tail):
             panel.set_xlabel("从提交到服务器收齐 40 kB（ms）")
     handles, labels = axes[0, 1].get_legend_handles_labels()
     fig.legend(handles, labels, loc="outside lower center", ncol=4, frameon=False)
-    figure(folder, "upload-latency-cdf", fig)
+    figure(folder, filename, fig)
+
+
+def plot_submit_backhaul_band(folder, low, high):
+    runs = read_runs(folder / "bbr" / "raw-evidence.tar.xz")
+    plans = {(run["plan"]["case"], run["plan"]["repeat"]): run["plan"] for run in runs.values()}
+    selected = set()
+    for (profile, repeat), plan in plans.items():
+        times, rates = zip(*plan["backhaul"])
+        for job, task in enumerate(plan["tasks"]):
+            if not task["warmup"] and low <= rates[bisect_right(times, task["t"])-1] < high:
+                selected.add((profile, repeat, job))
+    uploads = defaultdict(list)
+    cohorts = defaultdict(set)
+    for row in read(folder / "tasks.csv"):
+        key = (row["profile"], int(row["repeat"]), int(row["task"]))
+        if key in selected:
+            group = (key[0], row["mode"])
+            uploads[group].append(float(row["upload_ms"]))
+            cohorts[group].add(key)
+    profiles = {key[0] for key in selected}
+    if not profiles or any(cohorts[profile, mode] != {key for key in selected if key[0] == profile}
+                           or len(uploads[profile, mode]) != len(cohorts[profile, mode])
+                           for profile in profiles for mode in MODES):
+        raise ValueError("No complete paired cohort in the selected backhaul band")
+    band = f"{low:g}–{high:g} Mbps"
+    labels = {p: f"提交时回传 {band}（{len(cohorts[p, 'radio'])} 笔）" for p in PROFILES if p in profiles}
+    plot(folder, {key: np.sort(values) for key, values in uploads.items()},
+         labels=labels, title="低回传容量时，40 kB 上传时延分布",
+         filename=f"upload-latency-cdf-backhaul-{low:g}-{high:g}", tail_floor=.95, marks=(.99,))
 
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--data", type=Path, default=ROOT / "results/cross-layer-random-cdf")
     parser.add_argument("--font", type=Path)
+    parser.add_argument("--submit-backhaul-band", nargs=2, type=float, metavar=("LOW", "HIGH"),
+                        help="plot an existing paired cohort with LOW <= backhaul at nominal submit time < HIGH")
     args = parser.parse_args()
+    set_chinese_font(args.font)
+    if args.submit_backhaul_band:
+        low, high = args.submit_backhaul_band
+        if not 0 <= low < high or not math.isfinite(high):
+            parser.error("the backhaul band must have finite, increasing nonnegative bounds")
+        plot_submit_backhaul_band(args.data, low, high)
+        return
     tasks = collect(args.data)
     rows, uploads = summarise(tasks)
     csv_write(args.data / "tasks.csv", tasks)
     csv_write(args.data / "p99-summary.csv", rows)
-    set_chinese_font(args.font)
     plot(args.data, uploads)
 
 
