@@ -1,7 +1,10 @@
 """Build figures from the paired two-link measurements."""
 
 import argparse
+import csv
+import json
 import sys
+import tarfile
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -62,6 +65,43 @@ def radio_trace(rows, out, modes):
         ax.legend(loc="upper right", framealpha=.95, fontsize=9)
     fig.supxlabel("相对实验起点的时间（ms），浅绿色表示应用还有数据待发")
     figure(out, "radio-tracking", fig)
+
+
+def bbr_radio_adjustments(out):
+    with tarfile.open(out / "bbr" / "raw-evidence.tar.xz", "r:xz") as bundle:
+        plan = json.load(bundle.extractfile("radio__00/plan.json"))
+        with bundle.extractfile("radio__00/samples.csv") as stream:
+            samples = list(csv.DictReader(line.decode("utf-8") for line in stream))
+    ms = [(int(s["us"])-plan["origin"])/1000 for s in samples]
+    pace = [int(s["pacing_bps"])/1e6 for s in samples]
+    model = [int(s["btlbw_bps"])/1e6 for s in samples]
+    air_ms, air_mbps = zip(*[(t/1000, rate) for t, rate in plan["radio"]])
+    zoom = (1970, 2225)
+
+    fig, axes = plt.subplots(3, 1, figsize=(12.7, 8.0), height_ratios=(3, 3, 1.35), layout="constrained")
+    fig.suptitle("原生 BBRv3 的发包目标在何时发生变化", fontsize=16, fontweight="bold")
+    titles = ("全程（正式请求期间）", "调速区间放大")
+    for ax, title in zip(axes, titles):
+        ax.step(air_ms, air_mbps, where="post", color="#778088", ls="--", lw=1, label="空口容量")
+        ax.step(ms, model, where="post", color="#ad702c", ls=":", lw=1.8, label="带宽模型")
+        ax.step(ms, pace, where="post", color=COLORS["bbr"], lw=1.7, label="目标发包速率")
+        style(ax, title, "速率（Mbps）")
+        ax.set_ylim(0, 32)
+    axes[0].set_xlim(1100, 3210)
+    axes[0].axvspan(1340, 1480, color="#778088", alpha=.13, label="图 1a 的窗口")
+    axes[0].axvspan(*zoom, color="#187c77", alpha=.12, label="下方放大窗口")
+    axes[0].legend(loc="lower center", ncol=5, fontsize=9)
+    axes[0].set_xlabel("相对实验起点的时间（ms）")
+
+    axes[2].sharex(axes[1])
+    phases = [(3, "巡航"), (4, "补充在途数据"), (5, "提速探测")]
+    axes[2].step(ms, [int(s["state"]) & 0xff for s in samples], where="post", color="#187c77", lw=1.6)
+    style(axes[2], "", "")
+    axes[2].set_yticks([n for n, _ in phases], [name for _, name in phases])
+    axes[2].set_ylim(2.6, 5.4)
+    axes[2].set_xlim(*zoom)
+    axes[2].set_xlabel("相对实验起点的时间（ms）")
+    figure(out, "bbr-radio-adjustments", fig)
 
 
 def mixed_trace(rows, tasks, out, modes):
@@ -130,6 +170,8 @@ def main():
     tasks = read(folder / "tasks.csv")
     bar_comparison(summary, folder, modes, profiles)
     radio_trace(timeline, folder, modes)
+    if args.revision:
+        bbr_radio_adjustments(folder)
     mixed_trace(timeline, tasks, folder, modes)
     path_delay(tasks, folder, modes, profiles[-1])
 
