@@ -48,3 +48,19 @@ done
 ```
 
 `latency-reference-tasks.csv` 逐请求记录单笔物理下界、开启该配置随机等待时的理想排程和关闭等待的理想排程。`latency-reference-summary.csv` 汇总同批请求的第 95 百分位数及 80 ms 达标率。只重算参照时，最后一条命令的 `--data` 可直接指向发布目录。逐包预留参考完整的空口和回传容量计划，而物理下界给单笔请求独享服务。第 6 节说明两者的假设和用途。
+
+## 空口和回传同时随机变化的上传时延分布
+
+使用沿用的 QUIC 端点重跑原生 BBRv3 和仅空口快环。每个条件使用 16 个种子。每轮 64 笔正式请求，对应每个条件、每种方法 1,024 笔。理想排程直接用已归档的计划重放。
+
+```bash
+sudo "$PY" studies/cross_layer/experiment.py --revision --testbed "$TESTBED" \
+  --endpoint "$WORK/endpoint/endpoint" --out "$WORK/cdf-raw" \
+  --profiles random-headroom random-tight --modes bbr radio --repeats 16
+for mode in bbr radio; do
+  "$PY" studies/pacing_loss/analyze.py "$WORK/cdf-raw/$mode" "$WORK/cdf/$mode" --archive
+done
+"$PY" studies/cross_layer/latency_cdf.py --data "$WORK/cdf"
+```
+
+默认读取 [公开的 CDF 测试归档](../../results/cross-layer-random-cdf)，直接重算逐请求时间、上传时延 CDF 图、上传及回复的分位数和按运行轮次重抽样的区间。`tasks.csv` 的 `upload_ms` 以服务器收齐全部数据为终点，`e2e_ms` 以终端收到回复为终点。

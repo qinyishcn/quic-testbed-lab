@@ -121,7 +121,7 @@ def reference_tasks(plan):
             raise ValueError("Packet replay finished faster than the physical lower bound")
         yield dict(profile=plan["case"], repeat=plan["repeat"], phase=phase, task=job,
                    start_ms=release/1000, physical_floor_ms=floor, scheduling_reference_ms=replay,
-                   scheduling_no_retry_ms=no_retry)
+                   scheduling_no_retry_ms=no_retry, scheduling_upload_ms=(received[job]-release)/1000)
 
 
 def plot_comparison(folder, reference, font):

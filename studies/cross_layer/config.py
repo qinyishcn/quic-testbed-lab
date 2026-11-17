@@ -4,6 +4,7 @@ PROFILES = ("steady", "radio", "backhaul", "mixed", "mixed-clean", "mixed-feasib
 MODES = ("bbr", "outer", "radio", "dual")
 REVISION_MODES = ("bbr", "radio", "bbr_radio")
 REVISION_PROFILES = (*PROFILES[:-1], "forward-delay")
+TAIL_BACKHAUL = {"random-headroom": (14, 26), "random-tight": (6, 18)}
 START = 1_100_000
 COUNT = 64
 DURATION = 3_850_000
