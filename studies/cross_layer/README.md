@@ -68,3 +68,5 @@ done
 敏感性补测使用同一组命令，将 `--profiles` 换成 `random-middle random-tight-fast`，将原始数据与分析输出分别写入新的目录。已发布的补测见 [P90/P95 对照归档](../../results/cross-layer-percentile-sensitivity)。
 
 较慢的回传波动测试使用 `--profiles random-tight-100ms random-tight-200ms --long-train`。每轮正式提交 192 笔请求，提交跨度 6.303 s，观察至实验起点后 10 s。抓包校验和绘图命令与上面相同，将 `--data` 指向本组的分析输出目录即可。[100 ms 与 200 ms 长时序归档](../../results/cross-layer-slow-backhaul)
+
+回传 10–30 Mbps 的 P90 分解使用 `--profiles random-wide-100ms --long-train --modes bbr radio --repeats 16`。分析时先运行 `latency_cdf.py` 生成逐请求时延，再运行 `path_breakdown.py` 生成 P90 分段表和图，两条命令的 `--data` 指向同一目录。[独立报告](../../REPORT.backhaul-10-30.zh-CN.md) · [公开归档](../../results/cross-layer-backhaul-10-30)

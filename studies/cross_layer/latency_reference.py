@@ -77,26 +77,31 @@ def packets_ready(plan):
             yield ready, job, offset, bits
 
 
-def scheduled_arrivals(air, backhaul, plan):
+def scheduled_arrivals(air, backhaul, plan, paths=None):
     """Reserve earliest FIFO backhaul slots, then schedule the radio just in time."""
     received = defaultdict(float)
     air_free = backhaul_free = 0
     reservations = []
-    for ready, job, _, bits in sorted(packets_ready(plan)):
+    for ready, job, offset, bits in sorted(packets_ready(plan)):
         air_free = air.finish(max(air_free, ready), bits)
         backhaul_start = max(backhaul_free, air_free)
         backhaul_free = backhaul.finish(backhaul_start, bits)
-        reservations.append((backhaul_start, ready, bits))
         delivered = forward_arrival(backhaul_free, plan.get("forward_step"))
+        reservations.append((backhaul_start, ready, bits, job, offset, backhaul_free, delivered))
         received[job] = max(received[job], delivered)
     next_air_start = float("inf")
-    for backhaul_start, ready, bits in reversed(reservations):
+    for backhaul_start, ready, bits, job, offset, backhaul_end, delivered in reversed(reservations):
         air_end = min(backhaul_start, next_air_start)
         # Submit at air_start minus the pre-sampled retry wait. This places
         # discretionary waiting at the sender without delaying a backhaul slot.
         air_start = air.latest_start(air_end, bits)
         if air_start+1e-6 < ready or air.finish(air_start, bits) > air_end+1e-6:
             raise ValueError("Ideal send time cannot make the reserved service slot")
+        if paths is not None and delivered == received[job] and job not in paths:
+            release = plan["tasks"][job]["t"]
+            send = air_start-(ready-release)
+            paths[job] = (offset, (release, send, send, air_start, air_start, air_end,
+                                   backhaul_start, backhaul_end, delivered, delivered))
         next_air_start = air_start
     return received
 

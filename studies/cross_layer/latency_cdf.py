@@ -30,6 +30,7 @@ PROFILES = {
     "random-tight-fast": "回传 6–18 Mbps，每 20 ms 更新",
     "random-tight-100ms": "回传 6–18 Mbps，每 100 ms 更新",
     "random-tight-200ms": "回传 6–18 Mbps，每 200 ms 更新",
+    "random-wide-100ms": "回传 10–30 Mbps，每 100 ms 更新",
 }
 METRICS = ("upload_ms", "e2e_ms")
 TAIL_MARKS = (.90, .95, .99)

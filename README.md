@@ -4,6 +4,8 @@
 
 **空口与回传双环对照**：[原生 BBRv3、仅空口快环、BBRv3 加空口快环的 40 kB 请求实验](REPORT.cross-layer-loops.zh-CN.md) · [复现与原始数据](studies/cross_layer/README.md)
 
+**回传 10–30 Mbps**：[每 100 ms 更新时的上传 CDF 与 P90 逐段耗时](REPORT.backhaul-10-30.zh-CN.md)
+
 **BBRv3 独立复测**：[A1–D1、逐包判丢和在线 MiniCPM 对照](REPORT.bbr3.zh-CN.md) · [BBRv3 构建与复现](bbr3/README.md) · [分组对照结果](results/bbr3/burst-comparison.csv)
 
 **独立专题报告**：[QUIC 与 5G 上行调度的双环拥塞控制](REPORT.cc-bsr.zh-CN.md) · [发包节奏、平滑 RTT 和 BBR 窗口计算](REPORT.pacing.zh-CN.md) · [逐包时延、判丢与迟到重传](REPORT.loss-detection.zh-CN.md) · [BBRv1 与 BBRv3 的确认往返耗时及判丢期限](REPORT.ack-deadlines.zh-CN.md) · [补测数据与复现](studies/pacing_loss/README.md)

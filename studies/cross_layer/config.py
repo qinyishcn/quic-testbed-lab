@@ -12,6 +12,7 @@ TAIL_BACKHAUL = {
     "random-tight-fast": (6, 18, 20_000),
     "random-tight-100ms": (6, 18, 100_000),
     "random-tight-200ms": (6, 18, 200_000),
+    "random-wide-100ms": (10, 30, 100_000),
 }
 START = 1_100_000
 COUNT = 64
