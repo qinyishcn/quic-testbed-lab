@@ -155,8 +155,9 @@ def plot(folder, uploads, *, labels=PROFILES, title="空口与回传随机波动
             tail.scatter(points, [100*p for p in marks], color=COLORS[mode], s=29, zorder=5,
                          edgecolor="white", linewidth=.35)
             if marks == (.99,):
-                tail.annotate(f"{points[0]:.2f} ms", (points[0], 99), xytext=(5, 6),
-                              textcoords="offset points", color=COLORS[mode], fontsize=9)
+                tail.annotate(f"{points[0]:.2f} ms", (points[0], 99), xytext=(14, -23),
+                              textcoords="offset points", color=COLORS[mode], fontsize=9,
+                              arrowprops=dict(arrowstyle="-", color=COLORS[mode], lw=.7, shrinkB=4))
         style(full, f"{label} · 全分布", "累计完成比例（%）")
         style(tail, f"{label} · 尾部放大", "累计完成比例（%）")
         full.set(xlim=(left, right), ylim=(0, 101))
