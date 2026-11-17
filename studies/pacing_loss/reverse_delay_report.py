@@ -102,15 +102,17 @@ def plot_long_rise(runs, out, *, request_train=False):
     fig.suptitle(f"{title}｜升速初期的失配与随后空口容量的利用", fontsize=16, fontweight="bold")
     early = list(range(-20 if request_train else 0, 81, 2))
     coarse = list(range(0, 801, 50))
+    overview_edges = [-50, *coarse] if request_train else coarse
     late = list(range(700, 751, 2)) if request_train else list(range(550, 601, 2))
     detail_repeat = "第三轮" if request_train else "第一轮"
     groups = [(0, 8), (0, 100), (100, 500), (500, 800)]
     table = []
     for j, mode in enumerate(modes):
         detail, overview, zoom = axes[:, j]
-        for ax in ((overview, zoom) if request_train else axes[:, j]):
-            ax.axhline(30, color=CAP, lw=1.4, ls="--", label="空口容量（30 Mbps）")
-        by_window = {a: [] for a in coarse[:-1]}
+        if not request_train:
+            for ax in axes[:, j]:
+                ax.axhline(30, color=CAP, lw=1.4, ls="--", label="空口容量（30 Mbps）")
+        by_window = {a: [] for a in overview_edges[:-1]}
         for (tag, run), (raw, wire, rows) in sorted(runs.items()):
             if tag != mode:
                 continue
@@ -121,14 +123,23 @@ def plot_long_rise(runs, out, *, request_train=False):
             if run.endswith("__02" if request_train else "__00"):
                 if request_train:
                     capacity = [(t / 1000 - CHANGE, rate) for t, rate in raw["plan.json"]["capacity"]]
-                    step(detail, capacity, early[0], early[-1], color=CAP, lw=1.4, ls="--", zorder=4,
-                         label="空口容量（20→30 Mbps）")
+                    for ax, edges in ((detail, early), (overview, overview_edges), (zoom, late)):
+                        step(ax, capacity, edges[0], edges[-1], color=CAP, lw=1.4, ls="--",
+                             zorder=4, label="空口容量")
+                        if edges[0] < 0:
+                            ax.annotate("20 Mbps", (edges[0], 20), xytext=(5, 6),
+                                        textcoords="offset points", color=CAP, fontsize=9)
+                        ax.annotate("升速后 30 Mbps", (edges[-1], 30), xytext=(-5, 6),
+                                    textcoords="offset points", ha="right", color=CAP, fontsize=9)
+                        ax.margins(y=.12)
                 pacing = samples(raw, "pacing_bps", 1e6)
                 for ax, edges in ((detail, early), (zoom, late)):
                     step(ax, pacing, edges[0], edges[-1], color=PACE, lw=1.5, label="目标发包速率")
                     rates = [sum(n for t, n in wire["egress"] if a <= t < b) * .008 / (b - a)
                              for a, b in zip(edges, edges[1:])]
                     ax.stairs(rates, edges, baseline=None, color=OUT, lw=1.1, label="实际出队速率（2 ms）")
+            if request_train:
+                by_window[-50].append(windows(raw, wire, -50, 0)["egress_mbps"])
             for a, b in [*groups, *zip(coarse, coarse[1:])]:
                 values = windows(raw, wire, a, b)
                 table.append(dict(mode=mode, run=run, start_ms=a, end_ms=b, upload_finished_ms=completed,
@@ -136,13 +147,14 @@ def plot_long_rise(runs, out, *, request_train=False):
                                   **values))
                 if b-a == 50:
                     by_window[a].append(values["egress_mbps"])
-            overview.stairs([v[-1] for v in by_window.values()], coarse, baseline=None,
+            overview.stairs([v[-1] for v in by_window.values()], overview_edges, baseline=None,
                             color="#91a1a8", alpha=.55, lw=.9)
-        overview.stairs([median(v) for v in by_window.values()], coarse, baseline=None,
+        overview.stairs([median(v) for v in by_window.values()], overview_edges, baseline=None,
                         color=OUT, lw=2.1, label="实际出队速率（五轮中位数）")
         if request_train:
-            overview.stairs([v[2] for v in by_window.values()], coarse, baseline=None,
+            overview.stairs([v[2] for v in by_window.values()], overview_edges, baseline=None,
                             color="#795093", lw=1.4, ls="--", label="第三轮（放大示例）")
+            overview.set_xticks([-50, *range(0, 801, 100)])
         overview.axvspan(500, 800, color=OUT, alpha=.09, label="后段统计区间")
         overview.axvspan(late[0], late[-1], color=OUT, alpha=.13)
         detail_span = "升速前 20 ms 至升速后 80 ms" if request_train else "初期 80 ms"
@@ -150,7 +162,7 @@ def plot_long_rise(runs, out, *, request_train=False):
         style(overview, f"BBRv{mode[3]}｜每 50 ms 平均值，灰线为逐轮", "速率（Mbps）" if j == 0 else "")
         style(zoom, f"BBRv{mode[3]}｜放大 {late[0]}–{late[-1]} ms，{detail_repeat}",
               "速率（Mbps）" if j == 0 else "")
-        for ax, bounds in zip((detail, overview, zoom), (early, coarse, late)):
+        for ax, bounds in zip((detail, overview, zoom), (early, overview_edges, late)):
             ax.set_xlim(bounds[0], bounds[-1])
             ax.set_ylim(bottom=0)
             ax.set_xlabel("距空口从 20 Mbps 升至 30 Mbps 的时间（ms）")
