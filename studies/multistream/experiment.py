@@ -1,4 +1,4 @@
-"""Run simultaneous 40 kB streams on one QUIC BBRv3 connection over a single radio queue."""
+"""Run simultaneous fixed-size streams on one QUIC BBRv3 connection over a single radio queue."""
 
 import argparse
 import json
@@ -21,11 +21,11 @@ BATCHES = 8
 DURATION_US = 3_850_000
 
 
-def plan_for(repeat):
+def plan_for(repeat, frame_bytes=FRAME_BYTES):
     seed = 86_100+repeat
     tasks = [dict(t=230_000, size=160_000, warmup=True)]
     for batch in range(BATCHES):
-        tasks.extend(dict(t=1_100_000+300_000*batch, size=FRAME_BYTES, warmup=False, batch=batch+1)
+        tasks.extend(dict(t=1_100_000+300_000*batch, size=frame_bytes, warmup=False, batch=batch+1)
                      for _ in range(STREAMS))
     rates = [(0, 20), *correlated_rates(seed+200_000, 10, 30, 5000, .65, DURATION_US)]
     return dict(case=CASE, controller="bbr", provider="picoquic-bbr3", repeat=repeat, seed=seed,
@@ -40,9 +40,10 @@ def main():
         parser.add_argument(f"--{flag}", type=Path, required=True)
     parser.add_argument("--repeats", type=int, default=24)
     parser.add_argument("--stream-priority", type=int, choices=(9, 10), default=9)
+    parser.add_argument("--frame-bytes", type=int, default=FRAME_BYTES)
     args = parser.parse_args()
-    if os.geteuid() or args.repeats < 1:
-        parser.error("requires root and positive repeats")
+    if os.geteuid() or args.repeats < 1 or args.frame_bytes < 1:
+        parser.error("requires root, positive repeats and positive frame size")
     args.out = args.out.resolve()
     args.endpoint = args.endpoint.resolve(strict=True)
     testbed = args.testbed.resolve()
@@ -63,11 +64,11 @@ def main():
              endpoint_hash=sha(args.endpoint), runner_hash=sha(Path(__file__)), relay_hash=sha(relay),
              cases=[CASE], repeats=args.repeats, measured_tasks_per_run=STREAMS*BATCHES,
              stream_priority=args.stream_priority,
-             batches_per_run=BATCHES, streams_per_batch=STREAMS, frame_bytes=FRAME_BYTES,
+             batches_per_run=BATCHES, streams_per_batch=STREAMS, frame_bytes=args.frame_bytes,
              reverse={"min_us": 0, "max_us": 0}, forward_propagation_us=0, forward_queues=1))
         args.relay = relay
         for repeat in range(args.repeats):
-            plan = plan_for(repeat)
+            plan = plan_for(repeat, args.frame_bytes)
             plan["stream_priority"] = args.stream_priority
             run_case(args, names, CASE, repeat, None, logger, plan)
             work = args.out / f"{CASE}__{repeat:02d}"

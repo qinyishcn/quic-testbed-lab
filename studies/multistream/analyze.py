@@ -62,7 +62,7 @@ def received_bytes(run, sizes):
     return arrivals
 
 
-def stream_rows(run_id, run):
+def stream_rows(run_id, run, frame_bytes=FRAME_BYTES, budgets=BUDGETS):
     plan = run["plan"]
     sizes = {i: t["size"] for i, t in enumerate(plan["tasks"]) if not t["warmup"]}
     start = {int(r["task"]): int(r["us"]) for r in run["client.csv"] if r["event"] == "start" and int(r["task"])}
@@ -72,7 +72,7 @@ def stream_rows(run_id, run):
     arrivals = received_bytes(run, sizes)
     groups = defaultdict(list)
     for task in sorted(sizes):
-        if sizes[task] != FRAME_BYTES or not start[task] <= arrivals[task][0][0] <= arrivals[task][-1][0] <= done[task]:
+        if sizes[task] != frame_bytes or not start[task] <= arrivals[task][0][0] <= arrivals[task][-1][0] <= done[task]:
             raise ValueError("Request length or event order is invalid")
         batch = plan["tasks"][task]["batch"]
         groups[batch].append(task)
@@ -92,7 +92,7 @@ def stream_rows(run_id, run):
         origin = start[ids[0]]
         if previous and max(done[t] for t in previous) >= origin:
             raise ValueError("Two batches overlap")
-        for k in BUDGETS:
+        for k in budgets:
             cutoff = origin+1000*k
             by_stream = []
             for task in ids:
@@ -101,13 +101,13 @@ def stream_rows(run_id, run):
                 by_stream.append(volumes[index-1] if index else 0)
             count = sum(done[t] <= cutoff for t in ids)
             subtotal = sum(by_stream)
-            equivalent = subtotal//FRAME_BYTES
+            equivalent = subtotal//frame_bytes
             if not 0 <= count <= equivalent <= STREAMS:
                 raise ValueError("Byte count disagrees with completed streams")
             deadlines.append(dict(run=run_id, repeat=plan["repeat"], batch=batch, budget_ms=k,
                                   received_bytes=subtotal, completed=count, equivalent=equivalent,
                                   extra_frames=equivalent-count,
-                                  partial_bytes=subtotal-count*FRAME_BYTES,
+                                  partial_bytes=subtotal-count*frame_bytes,
                                   **{f"stream_{j}_bytes": n for j, n in enumerate(by_stream, 1)}))
     return stream, deadlines
 
@@ -159,7 +159,7 @@ def compare_deadlines(rows):
     return stats
 
 
-def plots(folder, summaries, streams):
+def plots(folder, summaries, streams, frame_bytes=FRAME_BYTES):
     fig, (left, right) = plt.subplots(1, 2, figsize=(12.1, 4.8), layout="constrained")
     k = [r["budget_ms"] for r in summaries]
     left.plot(k, [r["completed_mean"] for r in summaries], ".-", color="#465771", label="实际收齐")
@@ -184,7 +184,7 @@ def plots(folder, summaries, streams):
         ax.step(np.r_[0, x, 1.015*max(r["upload_ms"] for r in streams)], np.r_[0, y, 100],
                 where="post", color=color, lw=1.6, label=f"流 {index}")
     style(ax, "同一 QUIC 连接的四条流完成时延", "累计完成比例（%）")
-    ax.set_xlabel("从同时提交到服务器收齐 40 kB（ms）")
+    ax.set_xlabel(f"从同时提交到服务器收齐 {frame_bytes/1000:g} kB（ms）")
     ax.set_ylim(0, 102)
     ax.legend(loc="lower right")
     figure(folder, "per-stream-upload-cdf", fig)
@@ -194,14 +194,18 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--data", type=Path, default=ROOT/"results/quic-four-stream-deadline")
     parser.add_argument("--font", type=Path)
+    parser.add_argument("--budgets", type=int, nargs="+", default=BUDGETS)
     args = parser.parse_args()
+    if not args.budgets or any(k <= 0 for k in args.budgets) or sorted(set(args.budgets)) != list(args.budgets):
+        parser.error("budgets must be positive, unique and increasing")
+    frame_bytes = json.loads((args.data/"environment.json").read_text())["frame_bytes"]
     validation = json.loads((args.data/"validation.json").read_text())
     runs = read_archive(args.data)
     if not validation["all_qlog_arrivals_match_capture"] or len(runs) != validation["runs"]:
         raise ValueError("Unverified raw packet archives")
     full, deadlines = [], []
     for run_id, run in sorted(runs.items()):
-        streams, limit = stream_rows(run_id, run)
+        streams, limit = stream_rows(run_id, run, frame_bytes, args.budgets)
         full.extend(streams)
         deadlines.extend(limit)
     if len(full) != validation["tasks"]:
@@ -220,7 +224,7 @@ def main():
     csv_write(args.data/"stream-summary.csv", by_stream)
     (args.data/"radio-check.json").write_text(json.dumps(wire_stats(runs), indent=2)+"\n", encoding="utf-8", newline="\n")
     set_chinese_font(args.font)
-    plots(args.data, summaries, full)
+    plots(args.data, summaries, full, frame_bytes)
 
 
 if __name__ == "__main__":

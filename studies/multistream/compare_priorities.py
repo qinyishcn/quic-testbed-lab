@@ -11,7 +11,7 @@ import numpy as np
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT))
 from analyze import csv_write
-from studies.multistream.analyze import FRAME_BYTES, STREAMS, read_archive, received_bytes
+from studies.multistream.analyze import STREAMS, read_archive, received_bytes
 from v3.plots import figure, plt, set_chinese_font, style
 
 
@@ -43,7 +43,7 @@ def compare_deadlines(baseline, round_robin):
         yield summary
 
 
-def plot_overview(folder, comparisons, completions):
+def plot_overview(folder, comparisons, completions, budget_xlim=None):
     fig, (left, right) = plt.subplots(1, 2, figsize=(12.3, 4.8), layout="constrained")
     k = [r["budget_ms"] for r in comparisons]
     for priority, color in zip((9, 10), ("#465771", "#943f63")):
@@ -54,7 +54,7 @@ def plot_overview(folder, comparisons, completions):
     style(left, "两种调度的时限内完成帧数", "每批帧数")
     end_ms = 1.02*max(float(r["upload_ms"]) for rows in completions.values() for r in rows)
     left.set(xlabel="上传时延预算 K（ms）", yticks=range(5), ylim=(0, 4.15),
-             xlim=(min(k), 5*np.ceil(end_ms/5)))
+             xlim=budget_xlim or (min(k), 5*np.ceil(end_ms/5)))
     for (priority, rows), line in zip(completions.items(), ("--", "-")):
         for stream, color in enumerate(COLORS, 1):
             x = np.sort([float(r["upload_ms"]) for r in rows if int(r["stream"]) == stream])
@@ -67,7 +67,7 @@ def plot_overview(folder, comparisons, completions):
     figure(folder, "priority-comparison", fig)
 
 
-def plot_example(folder, runs_by_priority, example):
+def plot_example(folder, runs_by_priority, example, frame_bytes):
     run_id, batch, budget = batch_key(example)
     fig, axes = plt.subplots(1, 2, figsize=(12.3, 4.7), sharex=True, sharey=True, layout="constrained")
     recorded = []
@@ -84,9 +84,9 @@ def plot_example(folder, runs_by_priority, example):
             x, y = zip(*values)
             ax.step(x, np.array(y)/1000, where="post", color=color, label=f"流 {position}")
         ax.axvline(budget, ls="--", color="#585858", label=f"截止时间 {budget} ms")
-        ax.axhline(FRAME_BYTES/1000, ls=":", color="#585858")
+        ax.axhline(frame_bytes/1000, ls=":", color="#585858")
         style(ax, f"优先级 {priority}", "服务器累计收到的有效字节（kB）")
-        ax.set(xlabel="从四条流共同提交起计时（ms）", ylim=(0, 42))
+        ax.set(xlabel="从四条流共同提交起计时（ms）", ylim=(0, 1.05*frame_bytes/1000))
         ax.legend(loc="upper center", bbox_to_anchor=(.5, -.18), ncols=3, fontsize=8)
     csv_write(folder/"priority-example-arrivals.csv", recorded)
     figure(folder, "priority-example-arrivals", fig)
@@ -97,9 +97,17 @@ def main():
     parser.add_argument("baseline", type=Path)
     parser.add_argument("round_robin", type=Path)
     parser.add_argument("--font", type=Path)
+    parser.add_argument("--budget-xlim", type=float, nargs=2, metavar=("MIN", "MAX"))
     args = parser.parse_args()
+    if args.budget_xlim and not 0 <= args.budget_xlim[0] < args.budget_xlim[1]:
+        parser.error("budget axis limits must be increasing and nonnegative")
     paths = {9: args.baseline, 10: args.round_robin}
     runs = {p: read_archive(path) for p, path in paths.items()}
+    frame_sizes = {t["size"] for group in runs.values() for run in group.values()
+                   for t in run["plan"]["tasks"] if not t["warmup"]}
+    if len(frame_sizes) != 1:
+        raise ValueError("The two priority groups must have one common frame size")
+    frame_bytes = frame_sizes.pop()
     if runs[9].keys() != runs[10].keys():
         raise ValueError("The two priority groups do not contain the same connections")
     for run_id in runs[9]:
@@ -115,13 +123,13 @@ def main():
     csv_write(args.round_robin/"priority-comparison.csv", comparisons)
     completions = {p: read_rows(path/"stream-completions.csv") for p, path in paths.items()}
     set_chinese_font(args.font)
-    plot_overview(args.round_robin, comparisons, completions)
+    plot_overview(args.round_robin, comparisons, completions, args.budget_xlim)
     candidates = [r for r in deadlines[10] if r["completed"] == "0" and r["equivalent"] == "3"
-                  and all(int(r[f"stream_{i}_bytes"]) < FRAME_BYTES for i in range(1, STREAMS+1))]
+                  and all(int(r[f"stream_{i}_bytes"]) < frame_bytes for i in range(1, STREAMS+1))]
     if candidates:
         closest = max(candidates, key=lambda r: min(int(r[f"stream_{i}_bytes"]) for i in range(1, STREAMS+1)))
         print(closest)
-        plot_example(args.round_robin, runs, closest)
+        plot_example(args.round_robin, runs, closest, frame_bytes)
 
 
 if __name__ == "__main__":

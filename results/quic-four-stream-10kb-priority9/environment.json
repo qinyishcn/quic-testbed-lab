@@ -1,0 +1,32 @@
+{
+  "testbed": "7231ae8e5670b67564cf28d397c2820d9403ecdc",
+  "picoquic": "37bb5d28aaea417649a6d4facc15f54de7d55829",
+  "testbed_hashes": {
+    "netemu/src/netemu/emulator.py": "0a45366e147ac0dca72991bd828ce12bf9d645b10c295a18080c1ea5d4835169",
+    "netemu/src/netemu/profile.py": "9e058fb364d583e6b066637083a033ebad1de6db3d20ba2f32a81a16a8193848",
+    "aitestbed/analysis/logger.py": "459e1a26fee01a2e317255f9d1356e5dda3a4790c91e2678013654dfe530789d"
+  },
+  "kernel": "6.6.87.2-microsoft-standard-WSL2",
+  "router_qdiscs": {
+    "r0": "noqueue",
+    "r1": "noqueue"
+  },
+  "endpoint_hash": "c20eebec3e1616b5dfd1aeee2956445cab5f94469981c57fd7f0c6bcd1454cd0",
+  "runner_hash": "2c4d971f3ba492d8ef6ddcabe43bbebf7c1426fb1c63586298e69073cca2e758",
+  "relay_hash": "3e2cb67d2b53204ae9d789992a8ff44385f72999f09515cb034d783c0fba1af4",
+  "cases": [
+    "four-stream"
+  ],
+  "repeats": 24,
+  "measured_tasks_per_run": 32,
+  "stream_priority": 9,
+  "batches_per_run": 8,
+  "streams_per_batch": 4,
+  "frame_bytes": 10000,
+  "reverse": {
+    "min_us": 0,
+    "max_us": 0
+  },
+  "forward_propagation_us": 0,
+  "forward_queues": 1
+}
