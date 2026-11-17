@@ -121,10 +121,11 @@ def wait_ready(path, process, log, timeout=15):
         time.sleep(.005)
 
 
-def start_capture(namespace, iface, path, log, port=PORT):
+def start_capture(namespace, iface, path, log, port=PORT, *, immediate=False):
+    delivery = ["--immediate-mode"] if immediate else []
     with log.open("w") as handle:
         return subprocess.Popen(["ip", "netns", "exec", namespace, "tcpdump", "-i", iface,
-                                 "-Z", "root", "-U", "-n", "-s", "96", "--time-stamp-precision=nano",
+                                 "-Z", "root", "-U", "-n", *delivery, "-s", "96", "--time-stamp-precision=nano",
                                  "-w", str(path), "port", str(port)],
                                 stdout=subprocess.DEVNULL, stderr=handle)
 

@@ -65,6 +65,8 @@ def run_case(args, namespaces, case, repeat, emulator, logger, plan=None):
     origin = time.monotonic_ns()//1000+600_000
     plan["origin"] = origin
     dump(work / "plan.json", plan)
+    if "controller" in plan:
+        (work / "controller.txt").write_text(plan["controller"] + "\n")
     with (work / "tasks.tsv").open("w") as handle:
         for task in plan["tasks"]:
             handle.write(f'{task["t"]}\t{task["size"]}\t0\t0\t0\t0\t0\t0\t-\n')
@@ -72,12 +74,14 @@ def run_case(args, namespaces, case, repeat, emulator, logger, plan=None):
         (work / ("qlog-"+role)).mkdir()
     processes, captures = [], []
     try:
-        relay = launch(router, (sys.executable, Path(__file__).with_name("relay.py"), work,
+        relay_path = getattr(args, "relay", Path(__file__).with_name("relay.py"))
+        relay = launch(router, (sys.executable, relay_path, work,
                                origin, duration), work / "relay.log")
         processes.append(relay)
         wait_ready(work / "relay-ready", relay, work / "relay.log")
         for role, namespace, iface in (("client", client, "c0"), ("server", server, "s0")):
-            capture = start_capture(namespace, iface, work / (role+".pcap"), work / (role+".capture.txt"), port=4433)
+            capture = start_capture(namespace, iface, work / (role+".pcap"), work / (role+".capture.txt"),
+                                    port=4433, immediate="controller" in plan)
             captures.append(capture)
             deadline = time.monotonic()+3
             while "listening on" not in (work / (role+".capture.txt")).read_text():

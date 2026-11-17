@@ -307,7 +307,8 @@ def archive(raw, output):
     whitelist = {"environment.json", "profiles.yaml", "plan.json", "tasks.tsv", "client.csv", "server.csv",
         "samples.csv", "wire.csv", "client-sent.csv", "server-sent.csv", "client-loss.csv", "server-loss.csv",
         "client.pcap.gz", "server.pcap.gz", "client.capture.txt", "server.capture.txt",
-        "client.log", "server.log", "relay.log", "traffic.sqlite"}
+        "client.log", "server.log", "relay.log", "traffic.sqlite", "segments.csv",
+        "feedback.csv", "applied.csv", "controller.txt"}
     manifest = {}
     with tarfile.open(output, "w:xz") as bundle:
         for path in sorted(raw.rglob("*")):

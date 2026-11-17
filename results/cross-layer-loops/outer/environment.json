@@ -1,0 +1,34 @@
+{
+  "testbed": "7231ae8e5670b67564cf28d397c2820d9403ecdc",
+  "picoquic": "37bb5d28aaea417649a6d4facc15f54de7d55829",
+  "testbed_hashes": {
+    "netemu/src/netemu/emulator.py": "0a45366e147ac0dca72991bd828ce12bf9d645b10c295a18080c1ea5d4835169",
+    "netemu/src/netemu/profile.py": "9e058fb364d583e6b066637083a033ebad1de6db3d20ba2f32a81a16a8193848",
+    "aitestbed/analysis/logger.py": "459e1a26fee01a2e317255f9d1356e5dda3a4790c91e2678013654dfe530789d"
+  },
+  "kernel": "6.6.87.2-microsoft-standard-WSL2",
+  "router_qdiscs": {
+    "r0": "noqueue",
+    "r1": "noqueue"
+  },
+  "endpoint_hash": "1bfab4c24892599f528000606a40bf60762795dbbd1a890b77b718c28ef48821",
+  "runner_hash": "05d9e9201132ae453836b9f3e1cabde4282ce1b57db4edf6cde072c1ffdcce57",
+  "relay_hash": "dcb135168e3deab999d103e5031af894719be7f0c08347f4305acd1506ef0d1c",
+  "cases": [
+    "steady",
+    "radio",
+    "backhaul",
+    "mixed",
+    "mixed-clean",
+    "mixed-feasible",
+    "ack"
+  ],
+  "repeats": 3,
+  "measured_tasks_per_run": 64,
+  "mode": "outer",
+  "reverse": {
+    "min_us": 10000,
+    "max_us": 20000
+  },
+  "forward_propagation_us": 4000
+}
