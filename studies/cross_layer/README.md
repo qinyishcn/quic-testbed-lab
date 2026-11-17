@@ -72,3 +72,5 @@ done
 回传 10–30 Mbps 的 P90 分解使用 `--profiles random-wide-100ms --long-train --modes bbr radio --repeats 16`。分析时先运行 `latency_cdf.py` 生成逐请求时延，再运行 `path_breakdown.py` 生成 P90 分段表和图，两条命令的 `--data` 指向同一目录。[独立报告](../../REPORT.backhaul-10-30.zh-CN.md) · [公开归档](../../results/cross-layer-backhaul-10-30)
 
 低回传容量的 P99 图读取同一目录下已有的逐请求时延和归档计划。生成图时给 `latency_cdf.py` 传入 `--submit-backhaul-band 10 15`。
+
+端到端服务参照、服务器有效接收速率和待交付量通过 `python studies/cross_layer/goodput_timeline.py` 重算。程序从两个原始归档中读取配对的容量计划和接收端协议日志，输出图 3、50 ms 分窗数据及选中的展示窗口。

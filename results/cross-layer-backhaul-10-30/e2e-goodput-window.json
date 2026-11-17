@@ -1,0 +1,13 @@
+{
+  "score_kB": 6.849019999999999,
+  "mean_pending_kB": {
+    "bbr": 45.74846,
+    "radio": 23.890900000000002,
+    "ideal": 17.041880000000003
+  },
+  "start_ms": 1950.0,
+  "end_ms": 4450.0,
+  "low_backhaul_fraction": 0.34159999999999996,
+  "repeat": 8,
+  "run": "random-wide-100ms__08"
+}

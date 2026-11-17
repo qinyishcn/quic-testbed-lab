@@ -77,7 +77,7 @@ def packets_ready(plan):
             yield ready, job, offset, bits
 
 
-def scheduled_arrivals(air, backhaul, plan, paths=None):
+def scheduled_arrivals(air, backhaul, plan, paths=None, *, deliveries=None):
     """Reserve earliest FIFO backhaul slots, then schedule the radio just in time."""
     received = defaultdict(float)
     air_free = backhaul_free = 0
@@ -89,6 +89,8 @@ def scheduled_arrivals(air, backhaul, plan, paths=None):
         delivered = forward_arrival(backhaul_free, plan.get("forward_step"))
         reservations.append((backhaul_start, ready, bits, job, offset, backhaul_free, delivered))
         received[job] = max(received[job], delivered)
+        if deliveries is not None and not plan["tasks"][job]["warmup"]:
+            deliveries.append((delivered, bits//8-HEADER_BYTES))
     next_air_start = float("inf")
     for backhaul_start, ready, bits, job, offset, backhaul_end, delivered in reversed(reservations):
         air_end = min(backhaul_start, next_air_start)
