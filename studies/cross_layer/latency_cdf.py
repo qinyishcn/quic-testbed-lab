@@ -174,7 +174,42 @@ def plot(folder, uploads, *, labels=PROFILES, title="空口与回传随机波动
     figure(folder, filename, fig)
 
 
-def plot_submit_backhaul_band(folder, low, high):
+def plot_experience_rate(folder, uploads, labels, filename):
+    fig, axes = plt.subplots(len(labels), 2, figsize=(12.8, 4.1*len(labels)), squeeze=False,
+                             layout="constrained")
+    fig.suptitle("低回传容量时，40 kB 上传的等价体验速率", fontsize=16, fontweight="bold")
+    for (profile, label), (full, tail) in zip(labels.items(), axes):
+        rates = {m: np.sort(320 / uploads[profile, m]) for m in MODES}
+        left = .85*min(v[0] for v in rates.values())
+        right = 1.05*max(v[-1] for v in rates.values())
+        for mode, v in rates.items():
+            x = np.r_[left, v, right]
+            percent = 100*np.arange(1, len(v)+1)/len(v)
+            full.step(x, np.r_[0, percent, 100], where="post", color=COLORS[mode], lw=1.65)
+            tail.step(x, np.r_[100, percent[::-1], 0], where="pre",
+                      color=COLORS[mode], lw=1.65, label=LABELS[mode])
+            # Use the same request rank as the P99 latency to keep the two figures comparable.
+            guaranteed = 320/ecdf_quantile(uploads[profile, mode], .99)
+            covered = 100*np.mean(v >= guaranteed)
+            tail.scatter(guaranteed, covered, color=COLORS[mode], s=29, zorder=5,
+                         edgecolor="white", linewidth=.35)
+            tail.annotate(f"{guaranteed:.2f} Mbps", (guaranteed, covered), xytext=(10, 9),
+                          textcoords="offset points", color=COLORS[mode], fontsize=9,
+                          arrowprops=dict(arrowstyle="-", color=COLORS[mode], lw=.7, shrinkB=4))
+        style(full, f"{label} · 全分布", "速率不高于横轴值的请求比例（%）")
+        style(tail, "低速尾部 · 99% 请求能达到的速率", "达到横轴速率的请求比例（%）")
+        full.set(xlim=(left, right), ylim=(0, 101))
+        tail.set(xlim=(left, 1.1*max(ecdf_quantile(v, .05) for v in rates.values())),
+                 ylim=(94.5, 100.2), yticks=[95, 96, 97, 98, 99, 100])
+        tail.axhline(99, ls="--", lw=.75, color="#525b63", label="99% 达标")
+        for panel in (full, tail):
+            panel.set_xlabel("40 kB 除以完整上传时延（Mbps）")
+    handles, names = axes[0, 1].get_legend_handles_labels()
+    fig.legend(handles, names, loc="outside lower center", ncol=4, frameon=False)
+    figure(folder, filename, fig)
+
+
+def plot_submit_backhaul_band(folder, low, high, experience_rate=False):
     runs = read_runs(folder / "bbr" / "raw-evidence.tar.xz")
     plans = {(run["plan"]["case"], run["plan"]["repeat"]): run["plan"] for run in runs.values()}
     selected = set()
@@ -198,9 +233,12 @@ def plot_submit_backhaul_band(folder, low, high):
         raise ValueError("No complete paired cohort in the selected backhaul band")
     band = f"{low:g}–{high:g} Mbps"
     labels = {p: f"提交时回传 {band}（{len(cohorts[p, 'radio'])} 笔）" for p in PROFILES if p in profiles}
-    plot(folder, {key: np.sort(values) for key, values in uploads.items()},
-         labels=labels, title="低回传容量时，40 kB 上传时延分布",
-         filename=f"upload-latency-cdf-backhaul-{low:g}-{high:g}", tail_floor=.95, marks=(.99,))
+    ordered = {key: np.sort(values) for key, values in uploads.items()}
+    if experience_rate:
+        plot_experience_rate(folder, ordered, labels, f"experience-rate-cdf-backhaul-{low:g}-{high:g}")
+    else:
+        plot(folder, ordered, labels=labels, title="低回传容量时，40 kB 上传时延分布",
+             filename=f"upload-latency-cdf-backhaul-{low:g}-{high:g}", tail_floor=.95, marks=(.99,))
 
 
 def main():
@@ -209,13 +247,16 @@ def main():
     parser.add_argument("--font", type=Path)
     parser.add_argument("--submit-backhaul-band", nargs=2, type=float, metavar=("LOW", "HIGH"),
                         help="plot an existing paired cohort with LOW <= backhaul at nominal submit time < HIGH")
+    parser.add_argument("--experience-rate", action="store_true", help="convert the selected cohort to 40 kB upload rates")
     args = parser.parse_args()
+    if args.experience_rate and not args.submit_backhaul_band:
+        parser.error("--experience-rate requires --submit-backhaul-band")
     set_chinese_font(args.font)
     if args.submit_backhaul_band:
         low, high = args.submit_backhaul_band
         if not 0 <= low < high or not math.isfinite(high):
             parser.error("the backhaul band must have finite, increasing nonnegative bounds")
-        plot_submit_backhaul_band(args.data, low, high)
+        plot_submit_backhaul_band(args.data, low, high, args.experience_rate)
         return
     tasks = collect(args.data)
     rows, uploads = summarise(tasks)

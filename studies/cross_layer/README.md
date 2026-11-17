@@ -73,4 +73,6 @@ done
 
 低回传容量的 P99 图读取同一目录下已有的逐请求时延和归档计划。生成图时给 `latency_cdf.py` 传入 `--submit-backhaul-band 10 15`。
 
+等价体验速率图沿用这组样本。在上述命令末尾加上 `--experience-rate`，即可重算常规速率 CDF 与 99% 达标速率。
+
 端到端服务参照、服务器有效接收速率和待交付量通过 `python studies/cross_layer/goodput_timeline.py` 重算。程序从两个原始归档中读取配对的容量计划和接收端协议日志，输出图 3、50 ms 分窗数据及选中的展示窗口。
